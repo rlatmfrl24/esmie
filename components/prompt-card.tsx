@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import { Trash2, Copy, Quote, Sparkles, Eye } from "lucide-react";
+import { Trash2, Copy, Quote, Sparkles, Eye, CopyPlus } from "lucide-react";
 import { createClient } from "@/lib/client";
 import Link from "next/link";
 import { Prompt } from "@/lib/types";
@@ -29,6 +29,7 @@ interface PromptCardProps {
 export function PromptCard({ prompt }: PromptCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -36,6 +37,45 @@ export function PromptCard({ prompt }: PromptCardProps) {
       await navigator.clipboard.writeText(prompt.final_prompt);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    setIsDuplicating(true);
+    try {
+      const supabase = createClient();
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("사용자 인증이 필요합니다.");
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, created_at, ...promptData } = prompt;
+
+      const { error } = await supabase.from("prompts").insert({
+        ...promptData,
+        user_id: user.id,
+        core_theme: promptData.core_theme + " (Copy)",
+        details: promptData.details ?? "",
+      });
+
+      if (error) throw error;
+
+      window.location.reload();
+    } catch (error) {
+      console.error("복제 중 오류 발생:", error);
+      alert(
+        `복제 중 오류가 발생했습니다: ${
+          error instanceof Error ? error.message : "알 수 없는 오류"
+        }`
+      );
+    } finally {
+      setIsDuplicating(false);
     }
   };
 
@@ -135,7 +175,17 @@ export function PromptCard({ prompt }: PromptCardProps) {
           )}
         </CardContent>
 
-        <CardFooter className="pl-8 pb-4 pt-0 flex justify-end">
+        <CardFooter className="pl-8 pb-4 pt-0 flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleDuplicate}
+            disabled={isDuplicating}
+          >
+            <CopyPlus className="w-4 h-4" />
+            {isDuplicating ? "Duplicating..." : "Duplicate"}
+          </Button>
           <Link href={`/prompt/${prompt.id}`}>
             <Button variant="outline" size="sm" className="gap-2">
               <Eye className="w-4 h-4" />

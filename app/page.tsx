@@ -11,12 +11,8 @@ export default async function Home() {
   }
 
   return (
-    <div className="flex min-h-svh w-full flex-col font-sans">
-      <div className="flex w-full flex-1">
-        <main className="flex flex-col flex-1">
-          <Dashboard />
-        </main>
-      </div>
+    <div className="flex w-full flex-col font-sans">
+      <Dashboard />
     </div>
   );
 }
