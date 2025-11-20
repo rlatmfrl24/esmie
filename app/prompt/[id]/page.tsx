@@ -4,14 +4,22 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Calendar, Hash, Sparkles } from "lucide-react";
+import { FeedbackSheet } from "@/components/feedback-sheet";
+import { ArrowLeft, Calendar, Sparkles } from "lucide-react";
+import { VersionSelector } from "@/components/version-selector";
+import { DuplicatePromptButton } from "@/components/duplicate-prompt-button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
 export default async function PromptDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ version?: string }>;
 }) {
   const { id } = await params;
+  const { version: versionParam } = await searchParams;
   const supabase = await createClient();
 
   const { data: prompt, error } = await supabase
@@ -25,10 +33,51 @@ export default async function PromptDetailPage({
     notFound();
   }
 
-  const p = prompt as Prompt;
+  // Fetch history versions
+  const { data: histories } = await supabase
+    .from("prompt_histories")
+    .select("version, created_at")
+    .eq("prompt_id", id)
+    .order("version", { ascending: false });
+
+  const allVersions = [
+    {
+      version: prompt.version,
+      created_at: prompt.created_at || new Date().toISOString(),
+      isCurrent: true,
+    },
+    ...(histories || []).map((h: any) => ({
+      version: h.version,
+      created_at: h.created_at,
+      isCurrent: false,
+    })),
+  ].sort((a, b) => b.version - a.version);
+
+  let p = prompt as Prompt;
+  let isViewingHistory = false;
+
+  if (versionParam) {
+    const requestedVersion = parseInt(versionParam);
+    if (!isNaN(requestedVersion) && requestedVersion !== prompt.version) {
+      const { data: historyPrompt } = await supabase
+        .from("prompt_histories")
+        .select("*")
+        .eq("prompt_id", id)
+        .eq("version", requestedVersion)
+        .single();
+
+      if (historyPrompt) {
+        p = {
+          ...historyPrompt,
+          id: id,
+        } as Prompt;
+        isViewingHistory = true;
+      }
+    }
+  }
 
   return (
-    <div className="container p-4 space-y-8 mx-auto">
+    <div className="container p-4 space-y-8 mx-auto font-sans">
       <div className="grid gap-6">
         <div className="flex items-start justify-between">
           <div>
@@ -44,8 +93,11 @@ export default async function PromptDetailPage({
             </h1>
             <div className="flex items-center gap-4 mt-2 text-muted-foreground">
               <div className="flex items-center gap-1">
-                <Hash className="w-4 h-4" />
-                <span className="text-sm">Version {p.version}</span>
+                <VersionSelector
+                  promptId={id}
+                  currentVersion={p.version}
+                  versions={allVersions}
+                />
               </div>
               {p.created_at && (
                 <div className="flex items-center gap-1">
@@ -57,7 +109,28 @@ export default async function PromptDetailPage({
               )}
             </div>
           </div>
+          {!isViewingHistory && (
+            <div className="flex items-center gap-2">
+              <DuplicatePromptButton prompt={p} />
+              <FeedbackSheet prompt={p} />
+            </div>
+          )}
+          {isViewingHistory && (
+             <Button disabled variant="outline">
+                Past Version (Read Only)
+             </Button>
+          )}
         </div>
+        
+        {isViewingHistory && (
+          <Alert>
+            <InfoIcon className="h-4 w-4" />
+            <AlertTitle>Viewing Past Version</AlertTitle>
+            <AlertDescription>
+              You are viewing version {p.version}. This is a historical snapshot.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card>
           <CardHeader>
