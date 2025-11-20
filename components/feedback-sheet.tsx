@@ -123,7 +123,7 @@ export function FeedbackSheet({ prompt }: FeedbackSheetProps) {
                 {geminiData && (
                   <div className="mt-4 pt-4 border-t text-xs text-muted-foreground">
                     <h5 className="font-semibold mb-2">Proposed Changes:</h5>
-                    <pre className="overflow-x-auto bg-muted p-2 rounded whitespace-pre-wrap break-words">
+                    <pre className="overflow-x-auto bg-muted p-2 rounded whitespace-pre-wrap wrap-break-word">
                       {JSON.stringify(geminiData.promptAttributes, null, 2)}
                     </pre>
                   </div>
