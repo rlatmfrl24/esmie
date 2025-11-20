@@ -21,14 +21,23 @@ import { Trash2, Copy, Quote, Sparkles, Eye, CopyPlus } from "lucide-react";
 import { createClient } from "@/lib/client";
 import Link from "next/link";
 import { Prompt } from "@/lib/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 interface PromptCardProps {
   prompt: Prompt;
+  isSelected?: boolean;
+  onToggleSelect?: (checked: boolean) => void;
 }
 
-export function PromptCard({ prompt }: PromptCardProps) {
+export function PromptCard({
+  prompt,
+  isSelected,
+  onToggleSelect,
+}: PromptCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -40,7 +49,11 @@ export function PromptCard({ prompt }: PromptCardProps) {
     }
   };
 
-  const handleDuplicate = async () => {
+  const handleDuplicateClick = () => {
+    setIsDuplicateDialogOpen(true);
+  };
+
+  const handleDuplicateConfirm = async () => {
     setIsDuplicating(true);
     try {
       const supabase = createClient();
@@ -66,6 +79,7 @@ export function PromptCard({ prompt }: PromptCardProps) {
 
       if (error) throw error;
 
+      setIsDuplicateDialogOpen(false);
       window.location.reload();
     } catch (error) {
       console.error("복제 중 오류 발생:", error);
@@ -110,7 +124,14 @@ export function PromptCard({ prompt }: PromptCardProps) {
 
   return (
     <>
-      <Card className="group relative overflow-hidden border-muted-foreground/20 transition-all hover:shadow-md hover:border-primary/50">
+      <Card
+        className={cn(
+          "group relative overflow-hidden border-muted-foreground/20 transition-all hover:shadow-md",
+          isSelected
+            ? "border-primary shadow-md ring-1 ring-primary bg-primary/5"
+            : "hover:border-primary/50"
+        )}
+      >
         <CardHeader className="pb-3 pl-8">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
@@ -128,15 +149,24 @@ export function PromptCard({ prompt }: PromptCardProps) {
                 {prompt.core_theme || "Untitled Theme"}
               </CardTitle>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => setIsDeleteDialogOpen(true)}
-            >
-              <Trash2 className="h-4 w-4" />
-              <span className="sr-only">Delete</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {onToggleSelect && (
+                <div
+                  className={cn(
+                    "opacity-0 transition-opacity",
+                    isSelected ? "opacity-100" : "group-hover:opacity-100"
+                  )}
+                >
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(checked) =>
+                      onToggleSelect(checked as boolean)
+                    }
+                    className="bg-background/80 backdrop-blur-sm data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </CardHeader>
 
@@ -175,16 +205,16 @@ export function PromptCard({ prompt }: PromptCardProps) {
           )}
         </CardContent>
 
-        <CardFooter className="pl-8 pb-4 pt-0 flex justify-end gap-2">
+        <CardFooter className="pl-8 pb-4 pt-0 flex justify-start gap-2">
           <Button
             variant="outline"
             size="sm"
             className="gap-2"
-            onClick={handleDuplicate}
+            onClick={handleDuplicateClick}
             disabled={isDuplicating}
           >
             <CopyPlus className="w-4 h-4" />
-            {isDuplicating ? "Duplicating..." : "Duplicate"}
+            Duplicate
           </Button>
           <Link href={`/prompt/${prompt.id}`}>
             <Button variant="outline" size="sm" className="gap-2">
@@ -192,6 +222,15 @@ export function PromptCard({ prompt }: PromptCardProps) {
               View Details
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-muted-foreground hover:text-destructive ml-auto"
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </Button>
         </CardFooter>
       </Card>
 
@@ -218,6 +257,37 @@ export function PromptCard({ prompt }: PromptCardProps) {
               disabled={isDeleting}
             >
               {isDeleting ? "삭제 중..." : "삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isDuplicateDialogOpen}
+        onOpenChange={setIsDuplicateDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>프롬프트 복제 확인</DialogTitle>
+            <DialogDescription>
+              이 프롬프트를 복제하시겠습니까? 복제된 프롬프트는 제목에
+              &quot;(Copy)&quot;가 추가됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDuplicateDialogOpen(false)}
+              disabled={isDuplicating}
+            >
+              취소
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleDuplicateConfirm}
+              disabled={isDuplicating}
+            >
+              {isDuplicating ? "복제 중..." : "복제"}
             </Button>
           </DialogFooter>
         </DialogContent>
