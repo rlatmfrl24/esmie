@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { PlusIcon } from "lucide-react";
 import { createClient } from "@/lib/client";
+import { PromptFormData } from "@/lib/types";
+import { generateFullPrompt } from "@/lib/utils";
 
 interface FormData {
   coreTheme: string;
@@ -108,6 +110,7 @@ export function AddNewPrompt() {
 
       const insertData = {
         core_theme: formData.coreTheme,
+        version: 1,
         hair: formData.hair,
         pose: formData.pose,
         outfit: formData.outfit,
@@ -115,9 +118,12 @@ export function AddNewPrompt() {
         gaze: formData.gaze,
         makeup: formData.makeup,
         background: formData.background,
+        final_prompt: "",
         aspect_ratio: formData.aspectRatio,
       };
 
+      const finalPrompt = generateFullPrompt(insertData as PromptFormData);
+      insertData.final_prompt = finalPrompt;
       console.log("Inserting data:", insertData);
 
       const { data, error } = await supabase
