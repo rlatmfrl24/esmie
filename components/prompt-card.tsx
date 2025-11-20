@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import { Trash2, Copy, Quote, Sparkles, Eye, CopyPlus } from "lucide-react";
+import { Trash2, Copy, Quote, Sparkles, Eye } from "lucide-react";
 import { createClient } from "@/lib/client";
 import Link from "next/link";
 import { Prompt } from "@/lib/types";
@@ -37,59 +37,14 @@ export function PromptCard({
 }: PromptCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
-  const [isDuplicating, setIsDuplicating] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
-  const handleCopy = async () => {
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (prompt.final_prompt) {
       await navigator.clipboard.writeText(prompt.final_prompt);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
-    }
-  };
-
-  const handleDuplicateClick = () => {
-    setIsDuplicateDialogOpen(true);
-  };
-
-  const handleDuplicateConfirm = async () => {
-    setIsDuplicating(true);
-    try {
-      const supabase = createClient();
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        throw new Error("사용자 인증이 필요합니다.");
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { id, created_at, ...promptData } = prompt;
-
-      const { error } = await supabase.from("prompts").insert({
-        ...promptData,
-        user_id: user.id,
-        core_theme: promptData.core_theme + " (Copy)",
-        details: promptData.details ?? "",
-      });
-
-      if (error) throw error;
-
-      setIsDuplicateDialogOpen(false);
-      window.location.reload();
-    } catch (error) {
-      console.error("복제 중 오류 발생:", error);
-      alert(
-        `복제 중 오류가 발생했습니다: ${
-          error instanceof Error ? error.message : "알 수 없는 오류"
-        }`
-      );
-    } finally {
-      setIsDuplicating(false);
     }
   };
 
@@ -125,8 +80,9 @@ export function PromptCard({
   return (
     <>
       <Card
+        onClick={() => onToggleSelect?.(!isSelected)}
         className={cn(
-          "group relative overflow-hidden border-muted-foreground/20 transition-all hover:shadow-md",
+          "h-full flex flex-col cursor-pointer group relative overflow-hidden border-muted-foreground/20 transition-all hover:shadow-md",
           isSelected
             ? "border-primary shadow-md ring-1 ring-primary bg-primary/5"
             : "hover:border-primary/50"
@@ -152,6 +108,7 @@ export function PromptCard({
             <div className="flex items-center gap-2">
               {onToggleSelect && (
                 <div
+                  onClick={(e) => e.stopPropagation()}
                   className={cn(
                     "opacity-0 transition-opacity",
                     isSelected ? "opacity-100" : "group-hover:opacity-100"
@@ -170,7 +127,7 @@ export function PromptCard({
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="flex-1">
           {/* Full Prompt Section */}
           {prompt.final_prompt && (
             <div className="space-y-2">
@@ -206,7 +163,10 @@ export function PromptCard({
         </CardContent>
 
         <CardFooter className="flex justify-start gap-2">
-          <Link href={`/prompt/${prompt.id}`}>
+          <Link
+            href={`/prompt/${prompt.id}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <Button variant="outline" size="sm" className="gap-2">
               <Eye className="w-4 h-4" />
               View Details
@@ -216,18 +176,11 @@ export function PromptCard({
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
-            onClick={handleDuplicateClick}
-            disabled={isDuplicating}
-          >
-            <CopyPlus className="w-4 h-4" />
-            Duplicate
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
             className="gap-2 text-muted-foreground hover:text-destructive ml-auto"
-            onClick={() => setIsDeleteDialogOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDeleteDialogOpen(true);
+            }}
           >
             <Trash2 className="w-4 h-4" />
             Delete
@@ -258,37 +211,6 @@ export function PromptCard({
               disabled={isDeleting}
             >
               {isDeleting ? "삭제 중..." : "삭제"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isDuplicateDialogOpen}
-        onOpenChange={setIsDuplicateDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>프롬프트 복제 확인</DialogTitle>
-            <DialogDescription>
-              이 프롬프트를 복제하시겠습니까? 복제된 프롬프트는 제목에
-              &quot;(Copy)&quot;가 추가됩니다.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDuplicateDialogOpen(false)}
-              disabled={isDuplicating}
-            >
-              취소
-            </Button>
-            <Button
-              variant="default"
-              onClick={handleDuplicateConfirm}
-              disabled={isDuplicating}
-            >
-              {isDuplicating ? "복제 중..." : "복제"}
             </Button>
           </DialogFooter>
         </DialogContent>
