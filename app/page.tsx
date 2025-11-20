@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
 import Link from "next/link";
 import { ModeToggle } from "@/components/mode-toggle-button";
+import Dashboard from "./dashboard";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -24,8 +25,8 @@ export default async function Home() {
         </div>
       </header>
       <div className="flex w-full flex-1">
-        <main className="flex flex-col flex-1 items-center justify-center">
-          <p>Hello {data.claims.email}</p>
+        <main className="flex flex-col flex-1">
+          <Dashboard />
         </main>
       </div>
     </div>
