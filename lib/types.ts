@@ -12,6 +12,7 @@ export interface Prompt {
   final_prompt: string;
   aspect_ratio: string;
   created_at?: string;
+  details?: string;
 }
 
 interface PromptFormData {

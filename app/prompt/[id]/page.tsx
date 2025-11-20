@@ -28,22 +28,17 @@ export default async function PromptDetailPage({
   const p = prompt as Prompt;
 
   return (
-    <div className="container max-w-4xl py-10 space-y-8 mx-auto">
-      <div>
-        <Link href="/">
-          <Button
-            variant="ghost"
-            className="gap-2 pl-0 hover:pl-0 hover:bg-transparent"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </Button>
-        </Link>
-      </div>
-
+    <div className="container p-4 space-y-8 mx-auto">
       <div className="grid gap-6">
         <div className="flex items-start justify-between">
           <div>
+            <Link href="/">
+              <Button variant="ghost">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Button>
+            </Link>
+
             <h1 className="text-3xl font-bold tracking-tight">
               {p.core_theme || "Untitled Theme"}
             </h1>
@@ -87,6 +82,7 @@ export default async function PromptDetailPage({
             <DetailRow label="Outfit" value={p.outfit} />
             <DetailRow label="Gaze" value={p.gaze} />
             <DetailRow label="Makeup" value={p.makeup} />
+            <DetailRow label="Details" value={p.details} />
           </DetailCard>
 
           <DetailCard title="Environment & Technical">
