@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/server";
 import { redirect } from "next/navigation";
+import { LogoutButton } from "@/components/logout-button";
+import Link from "next/link";
+import { ModeToggle } from "@/components/mode-toggle-button";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -10,10 +13,21 @@ export default async function Home() {
   }
 
   return (
-    <div className="flex min-h-screen font-sans">
-      <main>
-        <h1>Hello World</h1>
-      </main>
+    <div className="flex min-h-svh w-full flex-col">
+      <header className="flex justify-between w-full p-2 border-b">
+        <Link href="/">
+          <h1 className="text-2xl font-bold">ESMIE</h1>
+        </Link>
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+          <LogoutButton />
+        </div>
+      </header>
+      <div className="flex w-full flex-1">
+        <main className="flex flex-col flex-1 items-center justify-center">
+          <p>Hello {data.claims.email}</p>
+        </main>
+      </div>
     </div>
   );
 }
