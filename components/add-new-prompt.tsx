@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectTrigger,
@@ -36,6 +37,8 @@ interface FormData {
   makeup: string;
   background: string;
   aspectRatio: string;
+  details: string;
+  fullPrompt: string;
 }
 
 interface FormErrors {
@@ -56,6 +59,8 @@ export function AddNewPrompt() {
     makeup: "",
     background: "",
     aspectRatio: "",
+    details: "",
+    fullPrompt: "",
   });
 
   const validateForm = (): boolean => {
@@ -108,6 +113,16 @@ export function AddNewPrompt() {
       const supabase = createClient();
       console.log("Supabase client created");
 
+      // 현재 사용자 정보 가져오기
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("사용자 인증이 필요합니다.");
+      }
+
       const insertData = {
         core_theme: formData.coreTheme,
         version: 1,
@@ -120,9 +135,14 @@ export function AddNewPrompt() {
         background: formData.background,
         final_prompt: "",
         aspect_ratio: formData.aspectRatio,
+        user_id: user.id,
+        details: formData.details || "",
       };
 
-      const finalPrompt = generateFullPrompt(insertData as PromptFormData);
+      // fullPrompt가 입력된 경우 사용하고, 없으면 자동 생성
+      const finalPrompt = formData.fullPrompt.trim()
+        ? formData.fullPrompt
+        : generateFullPrompt(insertData as PromptFormData);
       insertData.final_prompt = finalPrompt;
       console.log("Inserting data:", insertData);
 
@@ -149,6 +169,8 @@ export function AddNewPrompt() {
         makeup: "",
         background: "",
         aspectRatio: "",
+        details: "",
+        fullPrompt: "",
       });
       setErrors({});
       setOpen(false);
@@ -189,19 +211,19 @@ export function AddNewPrompt() {
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="sm:max-w-[425px]"
+        className="sm:max-w-[70vw] max-h-[80vh] flex flex-col p-0"
         onInteractOutside={(e) => {
           e.preventDefault();
         }}
       >
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle>Add New Prompt</DialogTitle>
             <DialogDescription>
               Add a new prompt to your dashboard.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4">
+          <div className="grid gap-4 overflow-y-auto flex-1 min-h-0 px-6">
             {errors.submit && (
               <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
                 {errors.submit}
@@ -349,8 +371,31 @@ export function AddNewPrompt() {
                 <p className="text-sm text-red-500">{errors.aspectRatio}</p>
               )}
             </div>
+            <div className="grid gap-3">
+              <Label htmlFor="details">Details</Label>
+              <Input
+                id="details"
+                name="details"
+                value={formData.details}
+                onChange={(e) => handleInputChange("details", e.target.value)}
+                placeholder="Enter additional details (optional)"
+              />
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="full-prompt">Full Prompt</Label>
+              <Textarea
+                id="full-prompt"
+                name="fullPrompt"
+                value={formData.fullPrompt}
+                onChange={(e) =>
+                  handleInputChange("fullPrompt", e.target.value)
+                }
+                placeholder="Enter full prompt (optional, leave empty to auto-generate)"
+                rows={4}
+              />
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 pt-4 pb-6 border-t">
             <DialogClose asChild>
               <Button variant="outline" type="button" disabled={isLoading}>
                 Cancel

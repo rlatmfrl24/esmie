@@ -14,7 +14,7 @@ export default async function Home() {
   }
 
   return (
-    <div className="flex min-h-svh w-full flex-col">
+    <div className="flex min-h-svh w-full flex-col font-sans">
       <header className="flex justify-between w-full p-2 border-b">
         <Link href="/">
           <h1 className="text-2xl font-bold">ESMIE</h1>

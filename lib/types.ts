@@ -10,6 +10,8 @@ interface PromptFormData {
   background: string;
   final_prompt: string;
   aspect_ratio: string;
+  details: string;
+  user_id: string;
 }
 
 export type { PromptFormData };
