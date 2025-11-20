@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FeedbackSheet } from "@/components/feedback-sheet";
 import { ArrowLeft, Calendar, Hash, Sparkles } from "lucide-react";
 
 export default async function PromptDetailPage({
@@ -28,7 +29,7 @@ export default async function PromptDetailPage({
   const p = prompt as Prompt;
 
   return (
-    <div className="container p-4 space-y-8 mx-auto">
+    <div className="container p-4 space-y-8 mx-auto font-sans">
       <div className="grid gap-6">
         <div className="flex items-start justify-between">
           <div>
@@ -57,6 +58,7 @@ export default async function PromptDetailPage({
               )}
             </div>
           </div>
+          <FeedbackSheet prompt={p} />
         </div>
 
         <Card>

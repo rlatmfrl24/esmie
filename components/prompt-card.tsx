@@ -132,7 +132,7 @@ export function PromptCard({
             : "hover:border-primary/50"
         )}
       >
-        <CardHeader className="pb-3 pl-8">
+        <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ export function PromptCard({
           </div>
         </CardHeader>
 
-        <CardContent className="pl-8 space-y-6">
+        <CardContent>
           {/* Full Prompt Section */}
           {prompt.final_prompt && (
             <div className="space-y-2">
@@ -205,7 +205,14 @@ export function PromptCard({
           )}
         </CardContent>
 
-        <CardFooter className="pl-8 pb-4 pt-0 flex justify-start gap-2">
+        <CardFooter className="flex justify-start gap-2">
+          <Link href={`/prompt/${prompt.id}`}>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Eye className="w-4 h-4" />
+              View Details
+            </Button>
+          </Link>
+
           <Button
             variant="outline"
             size="sm"
@@ -216,12 +223,6 @@ export function PromptCard({
             <CopyPlus className="w-4 h-4" />
             Duplicate
           </Button>
-          <Link href={`/prompt/${prompt.id}`}>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Eye className="w-4 h-4" />
-              View Details
-            </Button>
-          </Link>
           <Button
             variant="outline"
             size="sm"
