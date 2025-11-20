@@ -7,16 +7,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function generateFullPrompt(prompt: PromptFormData) {
-  const fullPrompt = `
-  ${prompt.core_theme}, 
-  ${prompt.hair}, 
-  ${prompt.pose}
-  ${prompt.outfit},
-  ${prompt.atmosphere},
-  ${prompt.gaze},
-  ${prompt.makeup},
-  ${prompt.background},
-  -- ar ${prompt.aspect_ratio}
-  `;
+  const fullPrompt = `${prompt.core_theme}, ${prompt.hair}, ${prompt.pose}, ${prompt.outfit}, ${prompt.atmosphere}, ${prompt.gaze}, ${prompt.makeup}, ${prompt.background}, ${prompt.details}, -- ar ${prompt.aspect_ratio}`;
   return fullPrompt;
 }

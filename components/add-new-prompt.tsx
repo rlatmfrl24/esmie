@@ -346,6 +346,17 @@ export function AddNewPrompt() {
               )}
             </div>
             <div className="grid gap-3">
+              <Label htmlFor="details">Details</Label>
+              <Input
+                id="details"
+                name="details"
+                value={formData.details}
+                onChange={(e) => handleInputChange("details", e.target.value)}
+                placeholder="Enter additional details (optional)"
+              />
+            </div>
+
+            <div className="grid gap-3">
               <Label htmlFor="aspect-ratio">Aspect Ratio *</Label>
               <Select
                 value={formData.aspectRatio}
@@ -370,16 +381,6 @@ export function AddNewPrompt() {
               {errors.aspectRatio && (
                 <p className="text-sm text-red-500">{errors.aspectRatio}</p>
               )}
-            </div>
-            <div className="grid gap-3">
-              <Label htmlFor="details">Details</Label>
-              <Input
-                id="details"
-                name="details"
-                value={formData.details}
-                onChange={(e) => handleInputChange("details", e.target.value)}
-                placeholder="Enter additional details (optional)"
-              />
             </div>
             <div className="grid gap-3">
               <Label htmlFor="full-prompt">Full Prompt</Label>

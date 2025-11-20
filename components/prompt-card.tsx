@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
-  CardDescription,
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "./ui/button";
@@ -18,23 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
+import { Trash2, Copy, Quote, Sparkles, Eye } from "lucide-react";
 import { createClient } from "@/lib/client";
-
-interface Prompt {
-  id: string;
-  core_theme: string;
-  version: number;
-  hair: string;
-  pose: string;
-  outfit: string;
-  atmosphere: string;
-  gaze: string;
-  makeup: string;
-  background: string;
-  final_prompt: string;
-  aspect_ratio: string;
-  created_at?: string;
-}
+import Link from "next/link";
+import { Prompt } from "@/lib/types";
 
 interface PromptCardProps {
   prompt: Prompt;
@@ -43,6 +29,15 @@ interface PromptCardProps {
 export function PromptCard({ prompt }: PromptCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (prompt.final_prompt) {
+      await navigator.clipboard.writeText(prompt.final_prompt);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -60,7 +55,6 @@ export function PromptCard({ prompt }: PromptCardProps) {
         return;
       }
 
-      // 성공 시 다이얼로그 닫고 페이지 새로고침
       setIsDeleteDialogOpen(false);
       window.location.reload();
     } catch (error) {
@@ -76,41 +70,78 @@ export function PromptCard({ prompt }: PromptCardProps) {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>{prompt.core_theme || `Prompt ${prompt.id}`}</CardTitle>
-          <CardDescription>Version {prompt.version}</CardDescription>
+      <Card className="group relative overflow-hidden border-muted-foreground/20 transition-all hover:shadow-md hover:border-primary/50">
+        <CardHeader className="pb-3 pl-8">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full border border-transparent bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  v{prompt.version}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {prompt.created_at
+                    ? new Date(prompt.created_at).toLocaleDateString()
+                    : ""}
+                </span>
+              </div>
+              <CardTitle className="text-xl font-bold tracking-tight text-foreground">
+                {prompt.core_theme || "Untitled Theme"}
+              </CardTitle>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => setIsDeleteDialogOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Delete</span>
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            {prompt.final_prompt && (
-              <div className="text-lg font-medium">
-                <p className="line-clamp-3">{prompt.final_prompt}</p>
+
+        <CardContent className="pl-8 space-y-6">
+          {/* Full Prompt Section */}
+          {prompt.final_prompt && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Full Prompt</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                  onClick={handleCopy}
+                >
+                  {isCopied ? (
+                    <span className="text-green-500 font-medium">Copied!</span>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      Copy
+                    </>
+                  )}
+                </Button>
               </div>
-            )}
-            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-              <div>
-                <span className="font-medium">Hair:</span> {prompt.hair}
-              </div>
-              <div>
-                <span className="font-medium">Pose:</span> {prompt.pose}
-              </div>
-              <div>
-                <span className="font-medium">Outfit:</span> {prompt.outfit}
-              </div>
-              <div>
-                <span className="font-medium">Gaze:</span> {prompt.gaze}
+              <div className="relative rounded-lg bg-muted/50 p-4 text-sm italic text-muted-foreground border border-border">
+                <Quote className="absolute -top-2 -left-2 h-4 w-4 text-primary/40 fill-primary/10" />
+                <p className="leading-relaxed whitespace-pre-wrap wrap-break-word">
+                  {prompt.final_prompt}
+                </p>
               </div>
             </div>
-          </div>
+          )}
         </CardContent>
-        <CardFooter>
-          <Button
-            variant="destructive"
-            onClick={() => setIsDeleteDialogOpen(true)}
-          >
-            Delete
-          </Button>
+
+        <CardFooter className="pl-8 pb-4 pt-0 flex justify-end">
+          <Link href={`/prompt/${prompt.id}`}>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Eye className="w-4 h-4" />
+              View Details
+            </Button>
+          </Link>
         </CardFooter>
       </Card>
 
