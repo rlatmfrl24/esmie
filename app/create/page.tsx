@@ -69,11 +69,11 @@ export default function CreatePage() {
     }
   };
 
-  const handleGenerateFromText = async (text: string) => {
+  const handleGenerateFromText = async (text: string, optimize: boolean) => {
     setIsLoading(true);
     setError("");
     try {
-      const result = await generatePromptFromText(text);
+      const result = await generatePromptFromText(text, optimize);
       if (result.success && result.data) {
         setGeneratedData(result.data);
         setStep("review");

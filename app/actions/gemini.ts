@@ -185,7 +185,7 @@ async function generatePromptCommon(promptText: string, imageBase64?: string) {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    
+
     const contents = [];
     if (imageBase64) {
       contents.push({
@@ -201,7 +201,7 @@ async function generatePromptCommon(promptText: string, imageBase64?: string) {
         ],
       });
     } else {
-       contents.push({
+      contents.push({
         role: "user",
         parts: [{ text: promptText }],
       });
@@ -217,14 +217,14 @@ async function generatePromptCommon(promptText: string, imageBase64?: string) {
         responseMimeType: "application/json",
         systemInstruction: SYSTEM_INSTRUCTION,
         responseSchema: {
-            type: "OBJECT",
-            properties: {
-                promptAttributes: PROMPT_ATTRIBUTES_SCHEMA,
-                finalPrompt: {
-                    type: "STRING",
-                    description: "The final prompt generated based on the input.",
-                },
+          type: "OBJECT",
+          properties: {
+            promptAttributes: PROMPT_ATTRIBUTES_SCHEMA,
+            finalPrompt: {
+              type: "STRING",
+              description: "The final prompt generated based on the input.",
             },
+          },
         },
       },
     });
@@ -235,24 +235,23 @@ async function generatePromptCommon(promptText: string, imageBase64?: string) {
     }
 
     const parsedData = JSON.parse(text);
-    
+
     // Map snake_case to camelCase for frontend
     const mappedData = {
-        coreTheme: parsedData.promptAttributes.core_theme,
-        hair: parsedData.promptAttributes.hair,
-        pose: parsedData.promptAttributes.pose,
-        outfit: parsedData.promptAttributes.outfit,
-        atmosphere: parsedData.promptAttributes.atmosphere,
-        gaze: parsedData.promptAttributes.gaze,
-        makeup: parsedData.promptAttributes.makeup,
-        background: parsedData.promptAttributes.background,
-        aspectRatio: parsedData.promptAttributes.aspect_ratio,
-        details: parsedData.promptAttributes.details,
-        fullPrompt: parsedData.finalPrompt,
+      coreTheme: parsedData.promptAttributes.core_theme,
+      hair: parsedData.promptAttributes.hair,
+      pose: parsedData.promptAttributes.pose,
+      outfit: parsedData.promptAttributes.outfit,
+      atmosphere: parsedData.promptAttributes.atmosphere,
+      gaze: parsedData.promptAttributes.gaze,
+      makeup: parsedData.promptAttributes.makeup,
+      background: parsedData.promptAttributes.background,
+      aspectRatio: parsedData.promptAttributes.aspect_ratio,
+      details: parsedData.promptAttributes.details,
+      fullPrompt: parsedData.finalPrompt,
     };
 
     return { success: true, data: mappedData };
-
   } catch (error) {
     console.error("Gemini API Error:", error);
     return { success: false, error: "Failed to generate prompt." };
@@ -260,25 +259,50 @@ async function generatePromptCommon(promptText: string, imageBase64?: string) {
 }
 
 export async function generatePromptFromKeywords(keywords: string[]) {
-    const promptText = `
-    Task: Generate a detailed AI image generation prompt based on the following keywords: ${keywords.join(", ")}.
+  const promptText = `
+    Task: Generate a detailed AI image generation prompt based on the following keywords: ${keywords.join(
+      ", "
+    )}.
     Ensure the result adheres to the Core Creative Principles.
     `;
-    return generatePromptCommon(promptText);
+  return generatePromptCommon(promptText);
 }
 
-export async function generatePromptFromText(text: string) {
-    const promptText = `
+export async function generatePromptFromText(
+  text: string,
+  optimize: boolean = true
+) {
+  let promptText;
+
+  if (optimize) {
+    promptText = `
     Task: Generate a detailed AI image generation prompt based on the following description: "${text}".
     Ensure the result adheres to the Core Creative Principles.
     `;
-    return generatePromptCommon(promptText);
+  } else {
+    promptText = `
+    Task: Analyze the following image generation prompt and extract its attributes (hair, pose, outfit, etc.) into the JSON schema.
+    IMPORTANT: Do NOT rewrite, optimize, or "improve" the prompt content.
+    The 'finalPrompt' field in the response MUST be exactly the same as the input provided below, or a very close approximation if minor formatting is needed.
+    
+    Input Prompt: "${text}"
+    `;
+  }
+
+  const result = await generatePromptCommon(promptText);
+
+  if (!optimize && result.success && result.data) {
+    // Force the final prompt to be exactly what the user entered, just to be safe.
+    result.data.fullPrompt = text;
+  }
+
+  return result;
 }
 
 export async function generatePromptFromImage(imageBase64: string) {
-     const promptText = `
+  const promptText = `
     Task: Analyze the attached image and generate a detailed AI image generation prompt that captures its style, subject, and atmosphere.
     Ensure the result adheres to the Core Creative Principles and is suitable for recreating a similar image.
     `;
-    return generatePromptCommon(promptText, imageBase64);
+  return generatePromptCommon(promptText, imageBase64);
 }
