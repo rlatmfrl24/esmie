@@ -19,7 +19,7 @@ import {
 } from "./ui/dialog";
 import { Trash2, Copy, Quote, Sparkles, Eye } from "lucide-react";
 import { createClient } from "@/lib/client";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Prompt } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ export function PromptCard({
   onDelete,
   deleteConfirmMessage,
 }: PromptCardProps) {
+  const router = useRouter();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -89,7 +90,7 @@ export function PromptCard({
   return (
     <>
       <Card
-        onClick={() => onToggleSelect?.(!isSelected)}
+        onClick={() => router.push(`/prompt/${prompt.id}`)}
         className={cn(
           "h-full flex flex-col cursor-pointer group relative overflow-hidden border-muted-foreground/20 transition-all hover:shadow-md",
           isSelected
@@ -172,16 +173,6 @@ export function PromptCard({
         </CardContent>
 
         <CardFooter className="flex justify-start gap-2">
-          <Link
-            href={`/prompt/${prompt.id}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Button variant="outline" size="sm" className="gap-2">
-              <Eye className="w-4 h-4" />
-              View Details
-            </Button>
-          </Link>
-
           <Button
             variant="outline"
             size="sm"

@@ -1,11 +1,11 @@
 import { createClient } from "@/lib/server";
 import { Prompt } from "@/lib/types";
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FeedbackSheet } from "@/components/feedback-sheet";
-import { ArrowLeft, Calendar, Sparkles } from "lucide-react";
+import { Calendar, Sparkles } from "lucide-react";
 import { VersionSelector } from "@/components/version-selector";
 import { DuplicatePromptButton } from "@/components/duplicate-prompt-button";
 import { AddToFavoriteButton } from "@/components/add-to-favorite-button";
@@ -47,7 +47,7 @@ export default async function PromptDetailPage({
       created_at: prompt.created_at || new Date().toISOString(),
       isCurrent: true,
     },
-    ...(histories || []).map((h: any) => ({
+    ...(histories || []).map((h) => ({
       version: h.version,
       created_at: h.created_at,
       isCurrent: false,
@@ -82,12 +82,7 @@ export default async function PromptDetailPage({
       <div className="grid gap-6">
         <div className="flex items-start justify-between">
           <div>
-            <Link href="/">
-              <Button variant="ghost">
-                <ArrowLeft className="w-4 h-4" />
-                Back to Dashboard
-              </Button>
-            </Link>
+            <BackButton />
 
             <h1 className="text-3xl font-bold tracking-tight">
               {p.core_theme || "Untitled Theme"}
@@ -121,13 +116,14 @@ export default async function PromptDetailPage({
             )}
           </div>
         </div>
-        
+
         {isViewingHistory && (
           <Alert>
             <InfoIcon className="h-4 w-4" />
             <AlertTitle>Viewing Past Version</AlertTitle>
             <AlertDescription>
-              You are viewing version {p.version}. This is a historical snapshot.
+              You are viewing version {p.version}. This is a historical
+              snapshot.
             </AlertDescription>
           </Alert>
         )}
