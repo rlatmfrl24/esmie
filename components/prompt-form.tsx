@@ -130,7 +130,7 @@ export function PromptForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0">
+    <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0 font-sans">
       <div className="grid gap-4 overflow-y-auto flex-1 min-h-0 px-6">
         {submitError && (
           <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
@@ -296,7 +296,7 @@ export function PromptForm({
           />
         </div>
       </div>
-      <div className="px-6 pt-4 pb-6 border-t flex justify-end gap-2">
+      <div className="px-6 pt-4 pb-6 flex justify-end gap-2">
         <Button
           variant="outline"
           type="button"

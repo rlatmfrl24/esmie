@@ -26,7 +26,7 @@ export default function CreatePage() {
   } = useCreatePrompt();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex-1">
+    <div className="bg-gradient-to-b from-background to-muted/20 flex-1">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header Section */}
         <div className="flex flex-col space-y-2 mb-12 text-center relative">

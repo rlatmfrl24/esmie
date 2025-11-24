@@ -177,7 +177,11 @@ Task: Please respond to the user's feedback. If they are asking for changes, sug
   }
 }
 
-async function generatePromptCommon(promptText: string, imageBase64?: string) {
+async function generatePromptCommon(
+  promptText: string,
+  imageBase64?: string,
+  thinkingLevel: ThinkingLevel = ThinkingLevel.HIGH
+) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -212,7 +216,7 @@ async function generatePromptCommon(promptText: string, imageBase64?: string) {
       contents: contents,
       config: {
         thinkingConfig: {
-          thinkingLevel: ThinkingLevel.HIGH,
+          thinkingLevel: thinkingLevel,
         },
         responseMimeType: "application/json",
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -289,7 +293,12 @@ export async function generatePromptFromText(
     `;
   }
 
-  const result = await generatePromptCommon(promptText);
+  const thinkingLevel = optimize ? ThinkingLevel.HIGH : ThinkingLevel.LOW;
+  const result = await generatePromptCommon(
+    promptText,
+    undefined,
+    thinkingLevel
+  );
 
   if (!optimize && result.success && result.data) {
     // Force the final prompt to be exactly what the user entered, just to be safe.

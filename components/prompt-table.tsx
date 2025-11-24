@@ -32,7 +32,6 @@ import { MoreHorizontal, ArrowUpDown, Copy, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/client";
 import Link from "next/link";
-import { AddNewPrompt } from "@/components/add-new-prompt";
 import {
   Dialog,
   DialogContent,
@@ -287,7 +286,6 @@ export function PromptTable({ data }: PromptTableProps) {
                 Merge ({Object.keys(rowSelection).length})
               </Button>
             )}
-            <AddNewPrompt />
           </div>
         </div>
       </div>
