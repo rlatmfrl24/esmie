@@ -28,7 +28,6 @@ export function CreateModeSelector({ onSelect }: CreateModeSelectorProps) {
       title: "From Image",
       description: "Generate a prompt based on an uploaded reference image.",
       icon: ImageIcon,
-      badge: "Coming Soon", // Or "To be Update" as per user request, but user said "To be Update" for title maybe? No, "3. From Image(To be Update)"
     },
     {
       id: "manual" as CreateMode,
@@ -53,11 +52,6 @@ export function CreateModeSelector({ onSelect }: CreateModeSelectorProps) {
             <div className="space-y-1">
               <CardTitle className="text-lg flex items-center gap-2">
                 {mode.title}
-                {mode.badge && (
-                  <span className="text-xs font-normal px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full">
-                    {mode.badge}
-                  </span>
-                )}
               </CardTitle>
               <CardDescription>{mode.description}</CardDescription>
             </div>

@@ -1,231 +1,131 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles, Wand2, Image as ImageIcon, Type, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CreateModeSelector, CreateMode } from "@/components/create/create-mode-selector";
+import { CreateModeSelector } from "@/components/create/create-mode-selector";
 import { KeywordsInput } from "@/components/create/keywords-input";
 import { PromptInput } from "@/components/create/prompt-input";
 import { ImageInput } from "@/components/create/image-input";
-import { PromptForm, PromptFormState } from "@/components/prompt-form";
-import {
-  generatePromptFromKeywords,
-  generatePromptFromText,
-  generatePromptFromImage,
-} from "@/app/actions/gemini";
-import { createClient } from "@/lib/client";
-import { PromptFormData } from "@/lib/types";
-import { generateFullPrompt } from "@/lib/utils";
-
-type Step = "selection" | "input" | "review";
+import { PromptForm } from "@/components/prompt-form";
+import { useCreatePrompt } from "./use-create-prompt";
+import { cn } from "@/lib/utils";
 
 export default function CreatePage() {
-  const router = useRouter();
-  const [mode, setMode] = useState<CreateMode | null>(null);
-  const [step, setStep] = useState<Step>("selection");
-  const [isLoading, setIsLoading] = useState(false);
-  const [generatedData, setGeneratedData] = useState<Partial<PromptFormState>>({});
-  const [error, setError] = useState<string>("");
-
-  const handleModeSelect = (selectedMode: CreateMode) => {
-    setMode(selectedMode);
-    if (selectedMode === "manual") {
-      setStep("review");
-      setGeneratedData({});
-    } else {
-      setStep("input");
-    }
-    setError("");
-  };
-
-  const handleBack = () => {
-    if (step === "review" && mode !== "manual") {
-      setStep("input");
-    } else {
-      setStep("selection");
-      setMode(null);
-      setGeneratedData({});
-    }
-    setError("");
-  };
-
-  const handleGenerateFromKeywords = async (keywords: string[]) => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const result = await generatePromptFromKeywords(keywords);
-      if (result.success && result.data) {
-        setGeneratedData(result.data);
-        setStep("review");
-      } else {
-        setError(result.error || "Failed to generate prompt.");
-      }
-    } catch (e) {
-      setError("An unexpected error occurred.");
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGenerateFromText = async (text: string, optimize: boolean) => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const result = await generatePromptFromText(text, optimize);
-      if (result.success && result.data) {
-        setGeneratedData(result.data);
-        setStep("review");
-      } else {
-        setError(result.error || "Failed to generate prompt.");
-      }
-    } catch (e) {
-      setError("An unexpected error occurred.");
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGenerateFromImage = async (base64: string) => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const result = await generatePromptFromImage(base64);
-      if (result.success && result.data) {
-        setGeneratedData(result.data);
-        setStep("review");
-      } else {
-        setError(result.error || "Failed to generate prompt.");
-      }
-    } catch (e) {
-      setError("An unexpected error occurred.");
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSave = async (formData: PromptFormState) => {
-    setIsLoading(true);
-    setError("");
-
-    try {
-      const supabase = createClient();
-      
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        throw new Error("사용자 인증이 필요합니다.");
-      }
-
-      const insertData = {
-        core_theme: formData.coreTheme,
-        version: 1,
-        hair: formData.hair,
-        pose: formData.pose,
-        outfit: formData.outfit,
-        atmosphere: formData.atmosphere,
-        gaze: formData.gaze,
-        makeup: formData.makeup,
-        background: formData.background,
-        final_prompt: "",
-        aspect_ratio: formData.aspectRatio,
-        user_id: user.id,
-        details: formData.details || "",
-      };
-
-      const finalPrompt = formData.fullPrompt.trim()
-        ? formData.fullPrompt
-        : generateFullPrompt(insertData as PromptFormData);
-      insertData.final_prompt = finalPrompt;
-
-      const { error } = await supabase
-        .from("prompts")
-        .insert([insertData]);
-
-      if (error) {
-        throw error;
-      }
-
-      // Redirect to home or dashboard
-      router.push("/");
-      router.refresh();
-    } catch (error) {
-      console.error("Error saving prompt:", error);
-      setError(
-        error instanceof Error ? error.message : "저장 중 오류가 발생했습니다."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    mode,
+    step,
+    isLoading,
+    generatedData,
+    error,
+    handleModeSelect,
+    handleBack,
+    handleGenerateFromKeywords,
+    handleGenerateFromText,
+    handleGenerateFromImage,
+    handleSave,
+  } = useCreatePrompt();
 
   return (
-    <div className="container mx-auto py-10 min-h-screen flex flex-col">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Create New Prompt</h1>
-        {step !== "selection" && (
-          <Button variant="ghost" onClick={handleBack}>
-            <ArrowLeft className="mr-2 w-4 h-4" />
-            Back
-          </Button>
-        )}
-      </div>
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 text-red-500 rounded-md">
-          {error}
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex-1">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header Section */}
+        <div className="flex flex-col space-y-2 mb-12 text-center relative">
+          {step !== "selection" && (
+            <Button
+              variant="ghost"
+              onClick={handleBack}
+              className="absolute left-0 top-0 hidden md:flex hover:bg-transparent hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="mr-2 w-4 h-4" />
+              Back
+            </Button>
+          )}
+          
+          <div className="flex items-center justify-center space-x-2">
+            <div className="p-2 bg-primary/10 rounded-full">
+              <Sparkles className="w-6 h-6 text-primary" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+              Create New Prompt
+            </h1>
+          </div>
+          <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
+            {step === "selection" && "Choose how you want to start creating your masterpiece."}
+            {step === "input" && mode === "keywords" && "Select keywords to build your prompt."}
+            {step === "input" && mode === "prompt" && "Describe what you want to see."}
+            {step === "input" && mode === "image" && "Upload an image to use as a reference."}
+            {step === "review" && "Review and fine-tune your generated prompt."}
+          </p>
         </div>
-      )}
 
-      <div className="flex-1">
-        {step === "selection" && (
-          <CreateModeSelector onSelect={handleModeSelect} />
-        )}
-
-        {step === "input" && mode === "keywords" && (
-          <KeywordsInput
-            onGenerate={handleGenerateFromKeywords}
-            isLoading={isLoading}
-          />
-        )}
-
-        {step === "input" && mode === "prompt" && (
-          <PromptInput
-            onGenerate={handleGenerateFromText}
-            isLoading={isLoading}
-          />
-        )}
-
-        {step === "input" && mode === "image" && (
-          <ImageInput
-            onGenerate={handleGenerateFromImage}
-            isLoading={isLoading}
-          />
-        )}
-
-        {step === "review" && (
-          <div className="max-w-3xl mx-auto border rounded-lg p-6 bg-card">
-             <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-2">Review & Edit</h2>
-                <p className="text-muted-foreground">
-                    Review the generated details and make any necessary adjustments before saving.
-                </p>
-             </div>
-            <PromptForm
-              initialData={generatedData}
-              onSubmit={handleSave}
-              onCancel={handleBack}
-              isLoading={isLoading}
-              submitError={error}
-            />
+        {/* Error Display */}
+        {error && (
+          <div className="mb-8 p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg flex items-center justify-center animate-in fade-in slide-in-from-top-2">
+            <p className="font-medium">{error}</p>
           </div>
         )}
+
+        {/* Main Content Area */}
+        <div className="relative min-h-[400px]">
+          {/* Step 1: Mode Selection */}
+          {step === "selection" && (
+            <div className="animate-in fade-in zoom-in-95 duration-300">
+              <CreateModeSelector onSelect={handleModeSelect} />
+            </div>
+          )}
+
+          {/* Step 2: Input Methods */}
+          {step === "input" && (
+            <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="bg-card border rounded-xl shadow-sm p-6 md:p-8">
+                {mode === "keywords" && (
+                  <KeywordsInput
+                    onGenerate={handleGenerateFromKeywords}
+                    isLoading={isLoading}
+                  />
+                )}
+                {mode === "prompt" && (
+                  <PromptInput
+                    onGenerate={handleGenerateFromText}
+                    isLoading={isLoading}
+                  />
+                )}
+                {mode === "image" && (
+                  <ImageInput
+                    onGenerate={handleGenerateFromImage}
+                    isLoading={isLoading}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Review & Edit */}
+          {step === "review" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="bg-card border rounded-xl shadow-sm overflow-hidden">
+                <div className="border-b bg-muted/30 p-6">
+                  <h2 className="text-xl font-semibold flex items-center">
+                    <Wand2 className="w-5 h-5 mr-2 text-primary" />
+                    Review & Edit
+                  </h2>
+                  <p className="text-muted-foreground mt-1">
+                    We've generated a prompt based on your input. Customize it to perfection.
+                  </p>
+                </div>
+                <div className="p-6 md:p-8">
+                  <PromptForm
+                    initialData={generatedData}
+                    onSubmit={handleSave}
+                    onCancel={handleBack}
+                    isLoading={isLoading}
+                    submitError={error}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
