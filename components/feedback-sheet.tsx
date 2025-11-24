@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageSquare, Loader2, Sparkles } from "lucide-react";
-import { getGeminiResponse } from "@/app/actions/gemini";
+import { getFeedbackFromGemini } from "@/app/actions/gemini";
 import { updatePrompt } from "@/app/actions/prompt";
 import { Prompt, PromptFormData } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -46,7 +46,7 @@ export function FeedbackSheet({ prompt }: FeedbackSheetProps) {
     setGeminiData(null);
 
     try {
-      const result = await getGeminiResponse(prompt, feedback);
+      const result = await getFeedbackFromGemini(prompt, feedback);
       if (result.success && result.data) {
         setAnswer(result.data.answer);
         setGeminiData(result.data);

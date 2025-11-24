@@ -9,14 +9,14 @@ export function MainHeader() {
         <h1 className="text-2xl font-bold">ESMIE</h1>
       </Link>
       <nav className="flex items-center gap-6">
+        <Link href="/create" className="text-sm font-medium">
+          Create
+        </Link>
         <Link href="/" className="text-sm font-medium">
           Prompts
         </Link>
         <Link href="/favorites" className="text-sm font-medium">
           Favorites
-        </Link>
-        <Link href="/settings" className="text-sm font-medium">
-          Settings
         </Link>
       </nav>
       <div className="flex items-center gap-2">

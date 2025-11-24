@@ -3,49 +3,7 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { Prompt } from "@/lib/types";
 
-export async function getGeminiResponse(promptData: Prompt, feedback: string) {
-  try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error("GEMINI_API_KEY is not defined");
-      return { success: false, error: "Gemini API configuration is missing." };
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-
-    // Construct a detailed string representation of the prompt attributes
-    const promptDetails = `
-      Core Theme: ${promptData.core_theme}
-      Hair: ${promptData.hair}
-      Pose: ${promptData.pose}
-      Outfit: ${promptData.outfit}
-      Atmosphere: ${promptData.atmosphere}
-      Gaze: ${promptData.gaze}
-      Makeup: ${promptData.makeup}
-      Background: ${promptData.background}
-      Aspect Ratio: ${promptData.aspect_ratio}
-      Details: ${promptData.details || "None"}
-      Final Prompt: ${promptData.final_prompt}
-    `;
-
-    const prompt = `
-Context: The user is viewing a specific AI image generation prompt with the following attributes:
-${promptDetails}
-
-User's Feedback/Query: "${feedback}"
-
-Task: Please respond to the user's feedback. If they are asking for changes, suggest a modified version of the prompt attributes or the final prompt. If they have a question, answer it. Provide the answer in Korean unless requested otherwise.
-`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: prompt,
-      config: {
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.HIGH,
-        },
-        responseMimeType: "application/json",
-        systemInstruction: `
+const SYSTEM_INSTRUCTION = `
         You are a world-class Creative Director for a premium lifestyle magazine, overseeing marketing and new product development. Your persona is a blend of a strategic marketer, a creative visionary, and a professional collaborator.
 
 [Role & Persona]
@@ -111,7 +69,54 @@ Never break character.
 Ensure only ONE woman appears in the image.
 
 Maintain a sophisticated tone even when describing explicit concepts.
-        `,
+        `;
+
+export async function getFeedbackFromGemini(
+  promptData: Prompt,
+  feedback: string
+) {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("GEMINI_API_KEY is not defined");
+      return { success: false, error: "Gemini API configuration is missing." };
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Construct a detailed string representation of the prompt attributes
+    const promptDetails = `
+      Core Theme: ${promptData.core_theme}
+      Hair: ${promptData.hair}
+      Pose: ${promptData.pose}
+      Outfit: ${promptData.outfit}
+      Atmosphere: ${promptData.atmosphere}
+      Gaze: ${promptData.gaze}
+      Makeup: ${promptData.makeup}
+      Background: ${promptData.background}
+      Aspect Ratio: ${promptData.aspect_ratio}
+      Details: ${promptData.details || "None"}
+      Final Prompt: ${promptData.final_prompt}
+    `;
+
+    const prompt = `
+Context: The user is viewing a specific AI image generation prompt with the following attributes:
+${promptDetails}
+
+User's Feedback/Query: "${feedback}"
+
+Task: Please respond to the user's feedback. If they are asking for changes, suggest a modified version of the prompt attributes or the final prompt. If they have a question, answer it. Provide the answer in Korean unless requested otherwise.
+`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: prompt,
+      config: {
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.HIGH,
+        },
+        responseMimeType: "application/json",
+        systemInstruction: SYSTEM_INSTRUCTION,
         responseJsonSchema: {
           type: "object",
           properties: {
