@@ -1,4 +1,4 @@
-import { PromptList } from "@/components/prompt-list";
+import { PromptTable } from "@/components/prompt-table";
 import { createClient } from "@/lib/server";
 import { Prompt } from "@/lib/types";
 
@@ -25,5 +25,5 @@ export default async function Dashboard() {
     );
   }
 
-  return <PromptList prompts={(prompts as Prompt[]) || []} />;
+  return <PromptTable data={(prompts as Prompt[]) || []} />;
 }
