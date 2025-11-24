@@ -110,18 +110,16 @@ export default async function PromptDetailPage({
               )}
             </div>
           </div>
-          {!isViewingHistory && (
-            <div className="flex items-center gap-2">
-              <DuplicatePromptButton prompt={p} />
-              <AddToFavoriteButton prompt={p} />
-              <FeedbackSheet prompt={p} />
-            </div>
-          )}
-          {isViewingHistory && (
-             <Button disabled variant="outline">
+          <div className="flex items-center gap-2">
+            {!isViewingHistory && <DuplicatePromptButton prompt={p} />}
+            <AddToFavoriteButton prompt={p} />
+            {!isViewingHistory && <FeedbackSheet prompt={p} />}
+            {isViewingHistory && (
+              <Button disabled variant="outline">
                 Past Version (Read Only)
-             </Button>
-          )}
+              </Button>
+            )}
+          </div>
         </div>
         
         {isViewingHistory && (

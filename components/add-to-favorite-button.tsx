@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Heart } from "lucide-react";
 import { createClient } from "@/lib/client";
 import { Prompt } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface AddToFavoriteButtonProps {
   prompt: Prompt;
@@ -12,12 +13,39 @@ interface AddToFavoriteButtonProps {
 
 export function AddToFavoriteButton({ prompt }: AddToFavoriteButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
-  const handleAddToFavorite = async () => {
+  const supabase = createClient();
+
+  const checkFavoriteStatus = useCallback(async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("favorite_prompts")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("prompt_id", prompt.id)
+        .eq("version", prompt.version)
+        .maybeSingle();
+
+      setIsFavorite(!!data);
+    } catch (error) {
+      console.error("Error checking favorite status:", error);
+    }
+  }, [prompt.id, prompt.version, supabase]);
+
+  useEffect(() => {
+    checkFavoriteStatus();
+  }, [checkFavoriteStatus]);
+
+  const handleToggleFavorite = async () => {
     setIsLoading(true);
     try {
-      const supabase = createClient();
-
       const {
         data: { user },
         error: userError,
@@ -27,28 +55,35 @@ export function AddToFavoriteButton({ prompt }: AddToFavoriteButtonProps) {
         throw new Error("사용자 인증이 필요합니다.");
       }
 
-      // Insert into favorite table
-      // Assuming schema: id (auto), user_id, prompt_id, created_at (default)
-      // Based on "add prompt data", we might need to copy fields if it fails,
-      // but usually favorites are references.
-      // If the table expects prompt data copy, it would need matching columns.
-      // Let's try reference first as it is standard.
-      const { error } = await supabase.from("favorite_prompts").insert({
-        ...prompt,
-        user_id: user.id,
-      });
+      if (isFavorite) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from("favorite_prompts")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("prompt_id", prompt.id)
+          .eq("version", prompt.version);
 
-      if (error) {
-        // If the error implies missing columns or table issues, we might need to adjust.
-        // But generally for 'favorite' table, user_id and prompt_id are the keys.
-        throw error;
+        if (error) throw error;
+        setIsFavorite(false);
+      } else {
+        // Add to favorites
+        // id 값을 제외한 prompt 필드 + user_id + prompt_id 추가
+        const { id, ...promptDataWithoutId } = prompt;
+        const { error } = await supabase.from("favorite_prompts").insert({
+          ...promptDataWithoutId,
+          user_id: user.id,
+          item_uid: null,
+          prompt_id: id, // 명시적으로 원본 prompt_id 저장
+        });
+
+        if (error) throw error;
+        setIsFavorite(true);
       }
-
-      alert("즐겨찾기에 추가되었습니다.");
     } catch (error) {
-      console.error("즐겨찾기 추가 중 오류 발생:", error);
+      console.error("즐겨찾기 변경 중 오류 발생:", error);
       alert(
-        `즐겨찾기 추가에 실패했습니다: ${
+        `작업 실패: ${
           error instanceof Error ? error.message : "알 수 없는 오류"
         }`
       );
@@ -59,12 +94,13 @@ export function AddToFavoriteButton({ prompt }: AddToFavoriteButtonProps) {
 
   return (
     <Button
-      onClick={handleAddToFavorite}
+      onClick={handleToggleFavorite}
       variant="outline"
       disabled={isLoading}
+      className={cn(isFavorite && "text-red-500 hover:text-red-600")}
     >
-      <Heart className="w-4 h-4 mr-2" />
-      Add to Favorite
+      <Heart className={cn("w-4 h-4 mr-2", isFavorite && "fill-current")} />
+      {isFavorite ? "Favorited" : "Add to Favorite"}
     </Button>
   );
 }

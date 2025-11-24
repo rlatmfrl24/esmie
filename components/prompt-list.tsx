@@ -35,7 +35,7 @@ export function PromptList({ prompts }: PromptListProps) {
   return (
     <div className="flex flex-col flex-1 p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">Prompts</h1>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
             <Button

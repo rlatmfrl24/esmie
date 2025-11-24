@@ -17,7 +17,7 @@ export default async function Dashboard() {
   if (error) {
     return (
       <div className="flex flex-col flex-1 p-4 space-y-4">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">Prompts</h1>
         <div className="text-red-500 p-4">
           프롬프트를 불러오는 중 오류가 발생했습니다: {error.message}
         </div>
