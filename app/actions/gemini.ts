@@ -71,6 +71,34 @@ Ensure only ONE woman appears in the image.
 Maintain a sophisticated tone even when describing explicit concepts.
         `;
 
+const PROMPT_ATTRIBUTES_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    core_theme: { type: "STRING" },
+    hair: { type: "STRING" },
+    pose: { type: "STRING" },
+    outfit: { type: "STRING" },
+    atmosphere: { type: "STRING" },
+    gaze: { type: "STRING" },
+    makeup: { type: "STRING" },
+    background: { type: "STRING" },
+    aspect_ratio: { type: "STRING" },
+    details: { type: "STRING" },
+  },
+  required: [
+    "core_theme",
+    "hair",
+    "pose",
+    "outfit",
+    "atmosphere",
+    "gaze",
+    "makeup",
+    "background",
+    "aspect_ratio",
+    "details",
+  ],
+};
+
 export async function getFeedbackFromGemini(
   promptData: Prompt,
   feedback: string
@@ -117,42 +145,16 @@ Task: Please respond to the user's feedback. If they are asking for changes, sug
         },
         responseMimeType: "application/json",
         systemInstruction: SYSTEM_INSTRUCTION,
-        responseJsonSchema: {
-          type: "object",
+        responseSchema: {
+          type: "OBJECT",
           properties: {
             answer: {
-              type: "string",
+              type: "STRING",
               description: "The answer to the user's feedback.",
             },
-            promptAttributes: {
-              type: "object",
-              properties: {
-                core_theme: { type: "string" },
-                hair: { type: "string" },
-                pose: { type: "string" },
-                outfit: { type: "string" },
-                atmosphere: { type: "string" },
-                gaze: { type: "string" },
-                makeup: { type: "string" },
-                background: { type: "string" },
-                aspect_ratio: { type: "string" },
-                details: { type: "string" },
-              },
-              required: [
-                "core_theme",
-                "hair",
-                "pose",
-                "outfit",
-                "atmosphere",
-                "gaze",
-                "makeup",
-                "background",
-                "aspect_ratio",
-                "details",
-              ],
-            },
+            promptAttributes: PROMPT_ATTRIBUTES_SCHEMA,
             finalPrompt: {
-              type: "string",
+              type: "STRING",
               description: "The final prompt.",
             },
           },
@@ -173,4 +175,110 @@ Task: Please respond to the user's feedback. If they are asking for changes, sug
     console.error("Gemini API Error:", error);
     return { success: false, error: "Failed to generate response." };
   }
+}
+
+async function generatePromptCommon(promptText: string, imageBase64?: string) {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return { success: false, error: "Gemini API configuration is missing." };
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const contents = [];
+    if (imageBase64) {
+      contents.push({
+        role: "user",
+        parts: [
+          { text: promptText },
+          {
+            inlineData: {
+              mimeType: "image/jpeg", // Assuming jpeg, but could detect
+              data: imageBase64,
+            },
+          },
+        ],
+      });
+    } else {
+       contents.push({
+        role: "user",
+        parts: [{ text: promptText }],
+      });
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: contents,
+      config: {
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.HIGH,
+        },
+        responseMimeType: "application/json",
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseSchema: {
+            type: "OBJECT",
+            properties: {
+                promptAttributes: PROMPT_ATTRIBUTES_SCHEMA,
+                finalPrompt: {
+                    type: "STRING",
+                    description: "The final prompt generated based on the input.",
+                },
+            },
+        },
+      },
+    });
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("No response text from Gemini");
+    }
+
+    const parsedData = JSON.parse(text);
+    
+    // Map snake_case to camelCase for frontend
+    const mappedData = {
+        coreTheme: parsedData.promptAttributes.core_theme,
+        hair: parsedData.promptAttributes.hair,
+        pose: parsedData.promptAttributes.pose,
+        outfit: parsedData.promptAttributes.outfit,
+        atmosphere: parsedData.promptAttributes.atmosphere,
+        gaze: parsedData.promptAttributes.gaze,
+        makeup: parsedData.promptAttributes.makeup,
+        background: parsedData.promptAttributes.background,
+        aspectRatio: parsedData.promptAttributes.aspect_ratio,
+        details: parsedData.promptAttributes.details,
+        fullPrompt: parsedData.finalPrompt,
+    };
+
+    return { success: true, data: mappedData };
+
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return { success: false, error: "Failed to generate prompt." };
+  }
+}
+
+export async function generatePromptFromKeywords(keywords: string[]) {
+    const promptText = `
+    Task: Generate a detailed AI image generation prompt based on the following keywords: ${keywords.join(", ")}.
+    Ensure the result adheres to the Core Creative Principles.
+    `;
+    return generatePromptCommon(promptText);
+}
+
+export async function generatePromptFromText(text: string) {
+    const promptText = `
+    Task: Generate a detailed AI image generation prompt based on the following description: "${text}".
+    Ensure the result adheres to the Core Creative Principles.
+    `;
+    return generatePromptCommon(promptText);
+}
+
+export async function generatePromptFromImage(imageBase64: string) {
+     const promptText = `
+    Task: Analyze the attached image and generate a detailed AI image generation prompt that captures its style, subject, and atmosphere.
+    Ensure the result adheres to the Core Creative Principles and is suitable for recreating a similar image.
+    `;
+    return generatePromptCommon(promptText, imageBase64);
 }
