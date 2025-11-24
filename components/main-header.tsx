@@ -12,8 +12,8 @@ export function MainHeader() {
         <Link href="/" className="text-sm font-medium">
           Prompts
         </Link>
-        <Link href="/collections" className="text-sm font-medium">
-          Collections
+        <Link href="/favorites" className="text-sm font-medium">
+          Favorites
         </Link>
         <Link href="/settings" className="text-sm font-medium">
           Settings

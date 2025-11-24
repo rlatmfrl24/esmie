@@ -28,12 +28,16 @@ interface PromptCardProps {
   prompt: Prompt;
   isSelected?: boolean;
   onToggleSelect?: (checked: boolean) => void;
+  onDelete?: () => Promise<void>;
+  deleteConfirmMessage?: string;
 }
 
 export function PromptCard({
   prompt,
   isSelected,
   onToggleSelect,
+  onDelete,
+  deleteConfirmMessage,
 }: PromptCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -51,21 +55,25 @@ export function PromptCard({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("prompts")
-        .delete()
-        .eq("id", prompt.id);
+      if (onDelete) {
+        await onDelete();
+      } else {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from("prompts")
+          .delete()
+          .eq("id", prompt.id);
 
-      if (error) {
-        console.error("삭제 중 오류 발생:", error);
-        alert(`삭제 중 오류가 발생했습니다: ${error.message}`);
-        setIsDeleting(false);
-        return;
+        if (error) {
+          console.error("삭제 중 오류 발생:", error);
+          alert(`삭제 중 오류가 발생했습니다: ${error.message}`);
+          setIsDeleting(false);
+          return;
+        }
+
+        setIsDeleteDialogOpen(false);
+        window.location.reload();
       }
-
-      setIsDeleteDialogOpen(false);
-      window.location.reload();
     } catch (error) {
       console.error("삭제 중 오류 발생:", error);
       alert(
@@ -73,6 +81,7 @@ export function PromptCard({
           error instanceof Error ? error.message : "알 수 없는 오류"
         }`
       );
+    } finally {
       setIsDeleting(false);
     }
   };
@@ -191,10 +200,12 @@ export function PromptCard({
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>프롬프트 삭제 확인</DialogTitle>
+            <DialogTitle>
+              {deleteConfirmMessage ? "확인" : "프롬프트 삭제 확인"}
+            </DialogTitle>
             <DialogDescription>
-              정말로 이 프롬프트를 삭제하시겠습니까? 이 작업은 되돌릴 수
-              없습니다.
+              {deleteConfirmMessage ||
+                "정말로 이 프롬프트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
