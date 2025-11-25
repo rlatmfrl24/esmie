@@ -67,23 +67,42 @@ export function PromptTable({ data }: PromptTableProps) {
 
     setIsDeleting(true);
     try {
-      const { error } = await supabase
+      // 1. Fetch the prompt data to be moved to trash
+      const { data: promptData, error: fetchError } = await supabase
+        .from("prompts")
+        .select("*")
+        .eq("id", deleteId)
+        .single();
+
+      if (fetchError) {
+        throw new Error(`Failed to fetch prompt: ${fetchError.message}`);
+      }
+
+      // 2. Insert into trash table
+      const { error: insertError } = await supabase
+        .from("trash")
+        .insert([promptData]);
+
+      if (insertError) {
+        throw new Error(`Failed to move to trash: ${insertError.message}`);
+      }
+
+      // 3. Delete from prompts table
+      const { error: deleteError } = await supabase
         .from("prompts")
         .delete()
         .eq("id", deleteId);
 
-      if (error) {
-        console.error("Error deleting prompt:", error);
-        alert(`Failed to delete prompt: ${error.message}`);
-        return;
+      if (deleteError) {
+        throw new Error(`Failed to delete prompt: ${deleteError.message}`);
       }
 
       setDeleteId(null);
       setRowSelection({});
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting prompt:", error);
-      alert("An unexpected error occurred");
+      alert(error.message || "An unexpected error occurred");
     } finally {
       setIsDeleting(false);
     }
