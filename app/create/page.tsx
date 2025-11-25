@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Sparkles, Wand2, Image as ImageIcon, Type, Keyboard } from "lucide-react";
+import { ArrowLeft, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreateModeSelector } from "@/components/create/create-mode-selector";
 import { KeywordsInput } from "@/components/create/keywords-input";

@@ -2,8 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, Image as ImageIcon, X } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { Upload, X } from "lucide-react";
 
 interface ImageInputProps {
   onGenerate: (base64: string) => void;
