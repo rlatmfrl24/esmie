@@ -2,7 +2,7 @@ import { PromptTable } from "@/components/prompts/prompt-table";
 import { createClient } from "@/lib/server";
 import { Prompt } from "@/lib/types";
 
-export default async function Dashboard() {
+export default async function Prompts() {
   const supabase = await createClient();
 
   const { data: prompts, error } = await supabase

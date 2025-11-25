@@ -153,7 +153,7 @@ export function PromptTable({ data }: PromptTableProps) {
       cell: ({ row }) => {
         return (
           <div className="flex space-x-2">
-            <span className="max-w-[400px] truncate font-medium">
+            <span className="max-w-[300px] truncate font-medium">
               <Link
                 href={`/prompt/${row.original.id}`}
                 className="hover:underline decoration-primary underline-offset-4"
@@ -164,6 +164,7 @@ export function PromptTable({ data }: PromptTableProps) {
           </div>
         );
       },
+      size: 200,
     },
     {
       accessorKey: "final_prompt",
@@ -173,7 +174,7 @@ export function PromptTable({ data }: PromptTableProps) {
         const id = row.original.id;
 
         return (
-          <div className="flex items-center gap-2 max-w-[700px]">
+          <div className="flex items-center gap-2 max-w-[1000px]">
             <span className="truncate text-muted-foreground">{prompt}</span>
             <Button
               variant="ghost"

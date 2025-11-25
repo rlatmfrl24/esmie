@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/server";
 import { redirect } from "next/navigation";
-import Dashboard from "./dashboard";
+import Prompts from "./prompts";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -12,7 +12,7 @@ export default async function Home() {
 
   return (
     <div className="flex w-full flex-col font-sans">
-      <Dashboard />
+      <Prompts />
     </div>
   );
 }
