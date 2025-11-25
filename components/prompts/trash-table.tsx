@@ -1,0 +1,366 @@
+"use client";
+
+import { useState } from "react";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getSortedRowModel,
+  SortingState,
+  RowSelectionState,
+} from "@tanstack/react-table";
+import { Prompt } from "@/lib/types";
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, ArrowUpDown, RotateCcw, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+interface TrashTableProps {
+  data: Prompt[];
+}
+
+export function TrashTable({ data }: TrashTableProps) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [actionType, setActionType] = useState<"restore" | "delete" | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleAction = async () => {
+    if (!actionId || !actionType) return;
+
+    setIsProcessing(true);
+    try {
+      if (actionType === "restore") {
+        // 1. Fetch from trash
+        const { data: trashItem, error: fetchError } = await supabase
+          .from("trash")
+          .select("*")
+          .eq("id", actionId)
+          .single();
+
+        if (fetchError || !trashItem) {
+          throw new Error(`Failed to fetch from trash: ${fetchError?.message}`);
+        }
+
+        // 2. Insert back into prompts
+        const { deleted_at, is_favorite, ...promptData } = trashItem;
+        const { error: insertError } = await supabase
+          .from("prompts")
+          .insert([promptData]);
+
+        if (insertError) {
+          throw new Error(`Failed to restore prompt: ${insertError.message}`);
+        }
+
+        // 3. Delete from trash
+        const { error: deleteError } = await supabase
+          .from("trash")
+          .delete()
+          .eq("id", actionId);
+
+        if (deleteError) {
+          throw new Error(`Failed to remove from trash: ${deleteError.message}`);
+        }
+      } else {
+        // Delete permanently
+        const { error } = await supabase
+          .from("trash")
+          .delete()
+          .eq("id", actionId);
+
+        if (error) {
+          throw new Error(`Failed to delete permanently: ${error.message}`);
+        }
+      }
+      
+      setActionId(null);
+      setActionType(null);
+      router.refresh();
+    } catch (error: any) {
+      console.error(`Error ${actionType}ing prompt:`, error);
+      alert(`Failed to ${actionType} prompt: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const columns: ColumnDef<Prompt>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="translate-y-[2px]"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="translate-y-[2px]"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "core_theme",
+      header: ({ column }) => (
+        <div
+          className="flex items-center cursor-pointer hover:text-foreground"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Theme
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUpDown className="ml-2 h-3 w-3" />
+          ) : null}
+        </div>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="flex space-x-2">
+            <span className="max-w-[300px] truncate font-medium">
+              {row.getValue("core_theme") || "Untitled"}
+            </span>
+          </div>
+        );
+      },
+      size: 200,
+    },
+    {
+      accessorKey: "final_prompt",
+      header: "Prompt",
+      cell: ({ row }) => {
+        const prompt = row.getValue("final_prompt") as string;
+        return (
+          <div className="flex items-center gap-2 max-w-[800px]">
+            <span className="truncate text-muted-foreground">{prompt}</span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "created_at", // Using created_at as proxy for deleted_at if not available, or just showing created date
+      header: ({ column }) => (
+        <div
+          className="flex items-center cursor-pointer hover:text-foreground"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Created
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUpDown className="ml-2 h-3 w-3" />
+          ) : null}
+        </div>
+      ),
+      cell: ({ row }) => {
+        const date = row.getValue("created_at") as string;
+        if (!date) return "-";
+        return (
+          <div className="text-muted-foreground text-sm">
+            {new Date(date).toLocaleDateString()}
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const prompt = row.original;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[160px]">
+              <DropdownMenuItem
+                onClick={() => {
+                  setActionId(prompt.id);
+                  setActionType("restore");
+                }}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Restore
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setActionId(prompt.id);
+                  setActionType("delete");
+                }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Forever
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data,
+    columns,
+    getRowId: (row) => row.id,
+    onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    state: {
+      sorting,
+      rowSelection,
+    },
+  });
+
+  return (
+    <div className="h-full flex-1 flex flex-col space-y-2 p-8 overflow-hidden">
+      <div className="flex items-center justify-between space-y-2 shrink-0">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Trash</h2>
+          <p className="text-muted-foreground">
+            Manage your deleted prompts.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto rounded-md border relative">
+        <table className="w-full caption-bottom text-sm">
+          <TableHeader className="sticky top-0 bg-background z-10 shadow-sm ">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="border-b border-b-g">
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className="group"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No trash items found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </table>
+      </div>
+
+      <Dialog
+        open={!!actionId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActionId(null);
+            setActionType(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === "restore" ? "Restore Prompt" : "Delete Forever"}
+            </DialogTitle>
+            <DialogDescription>
+              {actionType === "restore"
+                ? "Are you sure you want to restore this prompt? It will be moved back to your main list."
+                : "Are you sure you want to permanently delete this prompt? This action cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActionId(null);
+                setActionType(null);
+              }}
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={actionType === "delete" ? "destructive" : "default"}
+              onClick={handleAction}
+              disabled={isProcessing}
+            >
+              {isProcessing
+                ? "Processing..."
+                : actionType === "restore"
+                ? "Restore"
+                : "Delete Forever"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

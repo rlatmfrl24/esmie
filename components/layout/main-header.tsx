@@ -18,6 +18,9 @@ export function MainHeader() {
         <Link href="/favorites" className="text-sm font-medium">
           Favorites
         </Link>
+        <Link href="/trash" className="text-sm font-medium">
+          Trash
+        </Link>
       </nav>
       <div className="flex items-center gap-2">
         <ModeToggle />
