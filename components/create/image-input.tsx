@@ -124,3 +124,4 @@ export function ImageInput({ onGenerate, isLoading }: ImageInputProps) {
   );
 }
 
+
