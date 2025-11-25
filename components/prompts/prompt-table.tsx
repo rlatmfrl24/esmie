@@ -12,7 +12,6 @@ import {
 } from "@tanstack/react-table";
 import { Prompt } from "@/lib/types";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -318,7 +317,7 @@ export function PromptTable({ data }: PromptTableProps) {
       </div>
 
       <div className="flex-1 overflow-auto rounded-md border relative">
-        <Table>
+        <table className="w-full caption-bottom text-sm">
           <TableHeader className="sticky top-0 bg-background z-10 shadow-sm ">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="border-b border-b-g">
@@ -366,7 +365,7 @@ export function PromptTable({ data }: PromptTableProps) {
               </TableRow>
             )}
           </TableBody>
-        </Table>
+        </table>
       </div>
 
       <div className="flex items-center justify-end space-x-2 shrink-0">
