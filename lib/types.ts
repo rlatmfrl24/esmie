@@ -13,6 +13,7 @@ export interface Prompt {
   aspect_ratio: string;
   created_at?: string;
   details?: string;
+  is_favorite?: boolean;
 }
 
 interface PromptFormData {

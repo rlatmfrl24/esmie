@@ -6,7 +6,6 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
   getSortedRowModel,
   SortingState,
   RowSelectionState,
@@ -28,7 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, ArrowUpDown, Copy, Layers } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, Copy, Layers, Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/client";
 import Link from "next/link";
@@ -123,6 +122,34 @@ export function PromptTable({ data }: PromptTableProps) {
       ),
       enableSorting: false,
       enableHiding: false,
+    },
+    {
+      accessorKey: "is_favorite",
+      header: ({ column }) => (
+        <div
+          className="flex items-center justify-center cursor-pointer hover:text-foreground"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Fav
+          {
+            column.getIsSorted() ? (
+              <ArrowUpDown className="ml-2 h-3 w-3" />
+            ) : null
+          }
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          {row.original.is_favorite ? (
+            <Heart className="h-4 w-4 text-red-500 fill-current" />
+          ) : (
+            <Heart className="h-4 w-4 text-muted-foreground opacity-20" />
+          )}
+        </div>
+      ),
+      enableSorting: true,
+      enableHiding: false,
+      size: 50,
     },
     {
       accessorKey: "version",

@@ -25,5 +25,25 @@ export default async function Prompts() {
     );
   }
 
-  return <PromptTable data={(prompts as Prompt[]) || []} />;
+  let promptsWithFavorites = (prompts as Prompt[]) || [];
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: favorites } = await supabase
+      .from("favorite_prompts")
+      .select("prompt_id")
+      .eq("user_id", user.id);
+
+    const favoriteIds = new Set(favorites?.map((f) => f.prompt_id));
+
+    promptsWithFavorites = promptsWithFavorites.map((p) => ({
+      ...p,
+      is_favorite: favoriteIds.has(p.id),
+    }));
+  }
+
+  return <PromptTable data={promptsWithFavorites} />;
 }
