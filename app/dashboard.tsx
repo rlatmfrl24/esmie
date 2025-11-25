@@ -1,4 +1,4 @@
-import { PromptTable } from "@/components/prompt-table";
+import { PromptTable } from "@/components/prompts/prompt-table";
 import { createClient } from "@/lib/server";
 import { Prompt } from "@/lib/types";
 

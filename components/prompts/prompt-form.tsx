@@ -312,4 +312,3 @@ export function PromptForm({
     </form>
   );
 }
-

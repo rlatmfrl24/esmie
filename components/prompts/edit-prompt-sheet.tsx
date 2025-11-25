@@ -12,7 +12,7 @@ import {
 import { Edit2 } from "lucide-react";
 import { updatePrompt } from "@/app/actions/prompt";
 import { Prompt } from "@/lib/types";
-import { PromptForm, PromptFormState } from "@/components/prompt-form";
+import { PromptForm, PromptFormState } from "@/components/prompts/prompt-form";
 import { useRouter } from "next/navigation";
 
 interface EditPromptSheetProps {

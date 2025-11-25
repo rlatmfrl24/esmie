@@ -6,7 +6,7 @@ import { CreateModeSelector } from "@/components/create/create-mode-selector";
 import { KeywordsInput } from "@/components/create/keywords-input";
 import { PromptInput } from "@/components/create/prompt-input";
 import { ImageInput } from "@/components/create/image-input";
-import { PromptForm } from "@/components/prompt-form";
+import { PromptForm } from "@/components/prompts/prompt-form";  
 import { useCreatePrompt } from "./use-create-prompt";
 import { cn } from "@/lib/utils";
 

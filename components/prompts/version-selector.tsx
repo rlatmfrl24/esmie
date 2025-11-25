@@ -56,4 +56,3 @@ export function VersionSelector({
     </Select>
   );
 }
-

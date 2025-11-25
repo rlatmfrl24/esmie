@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PromptFormState } from "@/components/prompt-form";
+import { PromptFormState } from "@/components/prompts/prompt-form";
 import { CreateMode } from "@/components/create/create-mode-selector";
 import {
   generatePromptFromKeywords,

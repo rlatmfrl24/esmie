@@ -1,17 +1,17 @@
 import { createClient } from "@/lib/server";
 import { Prompt } from "@/lib/types";
 import { notFound } from "next/navigation";
-import { BackButton } from "@/components/back-button";
+import { BackButton } from "@/components/shared/back-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FeedbackSheet } from "@/components/feedback-sheet";
+import { FeedbackSheet } from "@/components/shared/feedback-sheet";
 import { Calendar, Sparkles } from "lucide-react";
-import { VersionSelector } from "@/components/version-selector";
-import { DuplicatePromptButton } from "@/components/duplicate-prompt-button";
-import { AddToFavoriteButton } from "@/components/add-to-favorite-button";
+import { VersionSelector } from "@/components/prompts/version-selector";
+import { DuplicatePromptButton } from "@/components/prompts/duplicate-prompt-button";
+import { AddToFavoriteButton } from "@/components/prompts/add-to-favorite-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
-import { EditPromptSheet } from "@/components/edit-prompt-sheet";
+import { EditPromptSheet } from "@/components/prompts/edit-prompt-sheet";
 
 export default async function PromptDetailPage({
   params,

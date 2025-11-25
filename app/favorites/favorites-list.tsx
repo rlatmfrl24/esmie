@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Prompt } from "@/lib/types";
-import { PromptCard } from "@/components/prompt-card";
+import { PromptCard } from "@/components/prompts/prompt-card";
 import { createClient } from "@/lib/client";
 import { useRouter } from "next/navigation";
 
