@@ -1,7 +1,8 @@
 import { ThinkingLevel } from "@google/genai";
 import { Prompt } from "@/lib/types";
 import { getGeminiClient } from "@/lib/gemini/client";
-import { SYSTEM_INSTRUCTION, PROMPT_ATTRIBUTES_SCHEMA } from "@/lib/gemini/config";
+import { PROMPT_ATTRIBUTES_SCHEMA } from "@/lib/gemini/config";
+import { getSystemInstruction } from "@/lib/services/settings";
 
 export async function getFeedbackFromGeminiService(
   promptData: Prompt,
@@ -9,6 +10,7 @@ export async function getFeedbackFromGeminiService(
 ) {
   try {
     const ai = getGeminiClient();
+    const systemInstruction = await getSystemInstruction();
 
     // Construct a detailed string representation of the prompt attributes
     const promptDetails = `
@@ -42,7 +44,7 @@ Task: Please respond to the user's feedback. If they are asking for changes, sug
           thinkingLevel: ThinkingLevel.HIGH,
         },
         responseMimeType: "application/json",
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: systemInstruction,
         responseSchema: {
           type: "OBJECT",
           properties: {
@@ -82,6 +84,7 @@ async function generatePromptCommon(
 ) {
   try {
     const ai = getGeminiClient();
+    const systemInstruction = await getSystemInstruction();
 
     const contents = [];
     if (imageBase64) {
@@ -112,7 +115,7 @@ async function generatePromptCommon(
           thinkingLevel: thinkingLevel,
         },
         responseMimeType: "application/json",
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: systemInstruction,
         responseSchema: {
           type: "OBJECT",
           properties: {

@@ -13,9 +13,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { MessageSquare, Loader2, Sparkles } from "lucide-react";
 import { getFeedbackFromGemini } from "@/app/actions/gemini";
+import { getFeedbackFromOpenAI } from "@/app/actions/openai";
 import { updatePrompt } from "@/app/actions/prompt";
 import { Prompt, PromptFormData } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 interface FeedbackSheetProps {
   prompt: Prompt;
@@ -23,7 +31,7 @@ interface FeedbackSheetProps {
 
 interface GeminiResponseData {
   answer: string;
-  feedback: string;
+  feedback?: string; // Made optional as it might not be in the response structure directly
   promptAttributes: PromptFormData;
   finalPrompt: string;
 }
@@ -36,17 +44,28 @@ export function FeedbackSheet({ prompt }: FeedbackSheetProps) {
   const [geminiData, setGeminiData] = useState<GeminiResponseData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<"gemini" | "gpt">(
+    "gemini"
+  );
 
   const handleSubmit = async () => {
     if (!feedback.trim()) return;
 
-    console.log("Submitting feedback for prompt:", prompt.id);
+    console.log(
+      `Submitting feedback for prompt: ${prompt.id} using ${selectedModel}`
+    );
     setIsLoading(true);
     setAnswer("");
     setGeminiData(null);
 
     try {
-      const result = await getFeedbackFromGemini(prompt, feedback);
+      let result;
+      if (selectedModel === "gemini") {
+        result = await getFeedbackFromGemini(prompt, feedback);
+      } else {
+        result = await getFeedbackFromOpenAI(prompt, feedback);
+      }
+
       if (result.success && result.data) {
         setAnswer(result.data.answer);
         setGeminiData(result.data);
@@ -103,7 +122,21 @@ export function FeedbackSheet({ prompt }: FeedbackSheetProps) {
               이 프롬프트에 대한 피드백을 남겨주세요.
             </SheetDescription>
           </SheetHeader>
-          <div className="px-4 py-4 space-y-4">
+          <div className="px-4 py-2 space-y-4">
+            <Select
+              value={selectedModel}
+              onValueChange={(value: "gemini" | "gpt") =>
+                setSelectedModel(value)
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a feedback type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gemini">Gemini</SelectItem>
+                <SelectItem value="gpt">GPT</SelectItem>
+              </SelectContent>
+            </Select>
             <Textarea
               placeholder="피드백을 입력해주세요..."
               value={feedback}
@@ -116,7 +149,7 @@ export function FeedbackSheet({ prompt }: FeedbackSheetProps) {
                 <div>
                   <h4 className="mb-2 font-semibold flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary" />
-                    Gemini Answer
+                    {selectedModel === "gemini" ? "Gemini" : "GPT"} Answer
                   </h4>
                   {answer}
                 </div>

@@ -21,6 +21,9 @@ export function MainHeader() {
         <Link href="/trash" className="text-sm font-medium">
           Trash
         </Link>
+        <Link href="/settings" className="text-sm font-medium">
+          Settings
+        </Link>
       </nav>
       <div className="flex items-center gap-2">
         <ModeToggle />

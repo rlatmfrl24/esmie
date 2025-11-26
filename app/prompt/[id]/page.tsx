@@ -12,6 +12,7 @@ import { AddToFavoriteButton } from "@/components/prompts/add-to-favorite-button
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { EditPromptSheet } from "@/components/prompts/edit-prompt-sheet";
+import { RollbackButton } from "@/components/prompts/rollback-button";
 
 export default async function PromptDetailPage({
   params,
@@ -112,9 +113,12 @@ export default async function PromptDetailPage({
             <AddToFavoriteButton prompt={p} />
             {!isViewingHistory && <FeedbackSheet prompt={p} />}
             {isViewingHistory && (
-              <Button disabled variant="outline">
-                Past Version (Read Only)
-              </Button>
+              <>
+                <Button disabled variant="outline">
+                  Past Version (Read Only)
+                </Button>
+                <RollbackButton prompt={p} promptId={id} />
+              </>
             )}
           </div>
         </div>
