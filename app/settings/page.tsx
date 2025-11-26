@@ -60,10 +60,10 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Gemini System Instruction</CardTitle>
+          <CardTitle>System Instruction</CardTitle>
           <CardDescription>
-            Modify the system instruction used by Gemini to generate prompts.
-            This defines the persona, style, and constraints for the AI.
+            Modify the system instruction used by generate prompts. This defines
+            the persona, style, and constraints for the AI.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

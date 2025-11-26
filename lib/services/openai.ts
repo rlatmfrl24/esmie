@@ -58,10 +58,10 @@ Task: Please respond to the user's feedback. If they are asking for changes, sug
 `;
 
     const response = await openai.responses.parse({
-      model: "gpt-4o-2024-08-06",
+      model: "gpt-5-nano",
       input: [
         {
-          role: "system",
+          role: "developer",
           content: systemInstruction,
         },
         {
