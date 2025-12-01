@@ -26,6 +26,9 @@ export async function generatePromptFromText(
   return generatePromptFromTextService(text, optimize);
 }
 
-export async function generatePromptFromImage(imageBase64: string) {
-  return generatePromptFromImageService(imageBase64);
+export async function generatePromptFromImage(
+  imageBase64: string,
+  description?: string
+) {
+  return generatePromptFromImageService(imageBase64, description);
 }

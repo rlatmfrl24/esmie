@@ -18,7 +18,9 @@ export function useCreatePrompt() {
   const [mode, setMode] = useState<CreateMode | null>(null);
   const [step, setStep] = useState<Step>("selection");
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedData, setGeneratedData] = useState<Partial<PromptFormState>>({});
+  const [generatedData, setGeneratedData] = useState<Partial<PromptFormState>>(
+    {}
+  );
   const [error, setError] = useState<string>("");
 
   const handleModeSelect = (selectedMode: CreateMode) => {
@@ -81,11 +83,14 @@ export function useCreatePrompt() {
     }
   };
 
-  const handleGenerateFromImage = async (base64: string) => {
+  const handleGenerateFromImage = async (
+    base64: string,
+    description?: string
+  ) => {
     setIsLoading(true);
     setError("");
     try {
-      const result = await generatePromptFromImage(base64);
+      const result = await generatePromptFromImage(base64, description);
       if (result.success && result.data) {
         setGeneratedData(result.data);
         setStep("review");
@@ -106,7 +111,7 @@ export function useCreatePrompt() {
 
     try {
       const supabase = createClient();
-      
+
       const {
         data: { user },
         error: userError,
@@ -137,9 +142,7 @@ export function useCreatePrompt() {
         : generateFullPrompt(insertData as PromptFormData);
       insertData.final_prompt = finalPrompt;
 
-      const { error } = await supabase
-        .from("prompts")
-        .insert([insertData]);
+      const { error } = await supabase.from("prompts").insert([insertData]);
 
       if (error) {
         throw error;
