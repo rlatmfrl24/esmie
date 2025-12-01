@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Upload, X } from "lucide-react";
 
 interface ImageInputProps {
-  onGenerate: (base64: string) => void;
+  onGenerate: (base64: string, description?: string) => void;
   isLoading: boolean;
 }
 
 export function ImageInput({ onGenerate, isLoading }: ImageInputProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -23,7 +24,8 @@ export function ImageInput({ onGenerate, isLoading }: ImageInputProps) {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) {
+      // 5MB limit
       setError("Image size should be less than 5MB.");
       return;
     }
@@ -45,14 +47,14 @@ export function ImageInput({ onGenerate, isLoading }: ImageInputProps) {
 
   const handleGenerate = () => {
     if (imagePreview) {
-        // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
-        const base64Data = imagePreview.split(",")[1];
-        onGenerate(base64Data);
+      // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+      const base64Data = imagePreview.split(",")[1];
+      onGenerate(base64Data, description);
     }
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto p-4">
+    <div className="space-y-6 max-w-2xl mx-auto p-4 font-sans">
       <div className="space-y-2">
         <h2 className="text-2xl font-bold">From Image</h2>
         <p className="text-muted-foreground">
@@ -61,9 +63,10 @@ export function ImageInput({ onGenerate, isLoading }: ImageInputProps) {
       </div>
 
       <div className="space-y-4">
-        <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 hover:bg-muted/50 transition-colors cursor-pointer relative"
-             onClick={() => fileInputRef.current?.click()}>
-          
+        <div
+          className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 hover:bg-muted/50 transition-colors cursor-pointer relative"
+          onClick={() => fileInputRef.current?.click()}
+        >
           <input
             type="file"
             ref={fileInputRef}
@@ -74,12 +77,15 @@ export function ImageInput({ onGenerate, isLoading }: ImageInputProps) {
           />
 
           {imagePreview ? (
-            <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src={imagePreview} 
-                alt="Preview" 
-                className="max-h-[400px] w-auto object-contain rounded-md" 
+            <div
+              className="relative w-full h-full flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="max-h-[400px] w-auto object-contain rounded-md"
               />
               <Button
                 variant="destructive"
@@ -105,7 +111,24 @@ export function ImageInput({ onGenerate, isLoading }: ImageInputProps) {
             </div>
           )}
         </div>
-        
+
+        <div className="space-y-2">
+          <label
+            htmlFor="description"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Additional Description (Optional)
+          </label>
+          <textarea
+            id="description"
+            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Add specific details or context about the image..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
+
         {error && (
           <p className="text-sm text-destructive text-center">{error}</p>
         )}
@@ -123,7 +146,3 @@ export function ImageInput({ onGenerate, isLoading }: ImageInputProps) {
     </div>
   );
 }
-
-
-
-
