@@ -30,6 +30,7 @@ import { MoreHorizontal, ArrowUpDown, RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/client";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -47,7 +48,13 @@ export function TrashTable({ data }: TrashTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [actionId, setActionId] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<"restore" | "delete" | null>(null);
+  const [actionType, setActionType] = useState<"restore" | "delete" | null>(
+    null
+  );
+  const [showBulkActionDialog, setShowBulkActionDialog] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<
+    "restore" | "delete" | null
+  >(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const router = useRouter();
@@ -87,7 +94,9 @@ export function TrashTable({ data }: TrashTableProps) {
           .eq("id", actionId);
 
         if (deleteError) {
-          throw new Error(`Failed to remove from trash: ${deleteError.message}`);
+          throw new Error(
+            `Failed to remove from trash: ${deleteError.message}`
+          );
         }
       } else {
         // Delete permanently
@@ -100,13 +109,77 @@ export function TrashTable({ data }: TrashTableProps) {
           throw new Error(`Failed to delete permanently: ${error.message}`);
         }
       }
-      
+
       setActionId(null);
       setActionType(null);
       router.refresh();
     } catch (error: any) {
       console.error(`Error ${actionType}ing prompt:`, error);
       alert(`Failed to ${actionType} prompt: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleBulkAction = async () => {
+    const selectedIds = Object.keys(rowSelection);
+    if (selectedIds.length === 0 || !bulkActionType) return;
+
+    setIsProcessing(true);
+    try {
+      if (bulkActionType === "restore") {
+        // 1. Fetch from trash
+        const { data: trashItems, error: fetchError } = await supabase
+          .from("trash")
+          .select("*")
+          .in("id", selectedIds);
+
+        if (fetchError)
+          throw new Error(`Failed to fetch from trash: ${fetchError.message}`);
+
+        // 2. Insert back into prompts
+        const promptsToRestore = trashItems.map(
+          ({ deleted_at, is_favorite, ...rest }) => rest
+        );
+        const { error: insertError } = await supabase
+          .from("prompts")
+          .insert(promptsToRestore);
+
+        if (insertError)
+          throw new Error(`Failed to restore prompts: ${insertError.message}`);
+
+        // 3. Delete from trash
+        const { error: deleteError } = await supabase
+          .from("trash")
+          .delete()
+          .in("id", selectedIds);
+
+        if (deleteError)
+          throw new Error(
+            `Failed to remove from trash: ${deleteError.message}`
+          );
+
+        toast.success(`${selectedIds.length} prompts restored successfully`);
+      } else {
+        // Delete permanently
+        const { error } = await supabase
+          .from("trash")
+          .delete()
+          .in("id", selectedIds);
+
+        if (error)
+          throw new Error(`Failed to delete permanently: ${error.message}`);
+
+        toast.success(`${selectedIds.length} prompts deleted permanently`);
+      }
+
+      setRowSelection({});
+      setShowBulkActionDialog(false);
+      setBulkActionType(null);
+      router.refresh();
+    } catch (error: any) {
+      console.error(`Error ${bulkActionType}ing prompts:`, error);
+      toast.error(`Failed to ${bulkActionType} prompts: ${error.message}`);
     } finally {
       setIsProcessing(false);
     }
@@ -258,9 +331,35 @@ export function TrashTable({ data }: TrashTableProps) {
       <div className="flex items-center justify-between space-y-2 shrink-0">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Trash</h2>
-          <p className="text-muted-foreground">
-            Manage your deleted prompts.
-          </p>
+          <p className="text-muted-foreground">Manage your deleted prompts.</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          {Object.keys(rowSelection).length > 0 && (
+            <>
+              <Button
+                onClick={() => {
+                  setBulkActionType("restore");
+                  setShowBulkActionDialog(true);
+                }}
+                variant="outline"
+                className="gap-2 animate-in fade-in slide-in-from-right-5"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Restore ({Object.keys(rowSelection).length})
+              </Button>
+              <Button
+                onClick={() => {
+                  setBulkActionType("delete");
+                  setShowBulkActionDialog(true);
+                }}
+                variant="destructive"
+                className="gap-2 animate-in fade-in slide-in-from-right-5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Forever ({Object.keys(rowSelection).length})
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -357,6 +456,58 @@ export function TrashTable({ data }: TrashTableProps) {
                 : actionType === "restore"
                 ? "Restore"
                 : "Delete Forever"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showBulkActionDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowBulkActionDialog(false);
+            setBulkActionType(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {bulkActionType === "restore"
+                ? "Restore Prompts"
+                : "Delete Forever"}
+            </DialogTitle>
+            <DialogDescription>
+              {bulkActionType === "restore"
+                ? `Are you sure you want to restore ${
+                    Object.keys(rowSelection).length
+                  } selected prompts? They will be moved back to your main list.`
+                : `Are you sure you want to permanently delete ${
+                    Object.keys(rowSelection).length
+                  } selected prompts? This action cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowBulkActionDialog(false);
+                setBulkActionType(null);
+              }}
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={bulkActionType === "delete" ? "destructive" : "default"}
+              onClick={handleBulkAction}
+              disabled={isProcessing}
+            >
+              {isProcessing
+                ? "Processing..."
+                : bulkActionType === "restore"
+                ? "Restore All"
+                : "Delete All Forever"}
             </Button>
           </DialogFooter>
         </DialogContent>

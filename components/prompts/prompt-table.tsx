@@ -26,7 +26,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, ArrowUpDown, Copy, Layers, Heart } from "lucide-react";
+import {
+  MoreHorizontal,
+  ArrowUpDown,
+  Copy,
+  Layers,
+  Heart,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/client";
 import Link from "next/link";
@@ -39,6 +46,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface PromptTableProps {
   data: Prompt[];
@@ -48,6 +56,7 @@ export function PromptTable({ data }: PromptTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCopied, setIsCopied] = useState<string | null>(null);
 
@@ -108,6 +117,50 @@ export function PromptTable({ data }: PromptTableProps) {
     }
   };
 
+  const handleBulkDelete = async () => {
+    const selectedIds = Object.keys(rowSelection);
+    if (selectedIds.length === 0) return;
+
+    setIsDeleting(true);
+    try {
+      // 1. Fetch all prompts to be deleted
+      const { data: promptsData, error: fetchError } = await supabase
+        .from("prompts")
+        .select("*")
+        .in("id", selectedIds);
+
+      if (fetchError)
+        throw new Error(`Failed to fetch prompts: ${fetchError.message}`);
+
+      // 2. Insert into trash
+      const { error: insertError } = await supabase
+        .from("trash")
+        .insert(promptsData);
+
+      if (insertError)
+        throw new Error(`Failed to move to trash: ${insertError.message}`);
+
+      // 3. Delete from prompts
+      const { error: deleteError } = await supabase
+        .from("prompts")
+        .delete()
+        .in("id", selectedIds);
+
+      if (deleteError)
+        throw new Error(`Failed to delete prompts: ${deleteError.message}`);
+
+      setRowSelection({});
+      setShowBulkDeleteDialog(false);
+      router.refresh();
+      toast.success(`${selectedIds.length} prompts moved to trash`);
+    } catch (error: any) {
+      console.error("Error deleting prompts:", error);
+      toast.error(error.message || "An unexpected error occurred");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleMerge = () => {
     const selectedIds = Object.keys(rowSelection);
     if (selectedIds.length === 0) return;
@@ -149,11 +202,9 @@ export function PromptTable({ data }: PromptTableProps) {
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Fav
-          {
-            column.getIsSorted() ? (
-              <ArrowUpDown className="ml-2 h-3 w-3" />
-            ) : null
-          }
+          {column.getIsSorted() ? (
+            <ArrowUpDown className="ml-2 h-3 w-3" />
+          ) : null}
         </div>
       ),
       cell: ({ row }) => (
@@ -270,7 +321,7 @@ export function PromptTable({ data }: PromptTableProps) {
 
         return (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger className="ml-auto font-sans" asChild>
               <Button
                 variant="ghost"
                 className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
@@ -279,15 +330,12 @@ export function PromptTable({ data }: PromptTableProps) {
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[160px]">
+            <DropdownMenuContent align="end" className="w-[160px] font-sans">
               <DropdownMenuItem
                 onClick={() => setDeleteId(prompt.id)}
                 className="text-destructive focus:text-destructive"
               >
                 Delete
-                <span className="ml-auto text-xs tracking-widest opacity-60">
-                  ⌘⌫
-                </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -329,6 +377,16 @@ export function PromptTable({ data }: PromptTableProps) {
               >
                 <Layers className="w-4 h-4" />
                 Merge ({Object.keys(rowSelection).length})
+              </Button>
+            )}
+            {Object.keys(rowSelection).length > 0 && (
+              <Button
+                onClick={() => setShowBulkDeleteDialog(true)}
+                variant="destructive"
+                className="gap-2 animate-in fade-in slide-in-from-right-5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete ({Object.keys(rowSelection).length})
               </Button>
             )}
           </div>
@@ -398,7 +456,7 @@ export function PromptTable({ data }: PromptTableProps) {
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
       >
-        <DialogContent>
+        <DialogContent className="font-sans">
           <DialogHeader>
             <DialogTitle>Delete Prompt</DialogTitle>
             <DialogDescription>
@@ -420,6 +478,37 @@ export function PromptTable({ data }: PromptTableProps) {
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showBulkDeleteDialog}
+        onOpenChange={(open) => !open && setShowBulkDeleteDialog(false)}
+      >
+        <DialogContent className="font-sans">
+          <DialogHeader>
+            <DialogTitle>Delete Prompts</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {Object.keys(rowSelection).length}{" "}
+              selected prompts? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowBulkDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete All"}
             </Button>
           </DialogFooter>
         </DialogContent>
