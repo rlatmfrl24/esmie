@@ -19,9 +19,17 @@ export async function restorePrompt(id: string) {
     }
 
     // 2. Insert back into prompts
+    const {
+      deleted_at,
+      is_favorite,
+      origin_type,
+      prompt_id,
+      item_uid,
+      ...promptData
+    } = trashItem;
     const { error: insertError } = await supabase
       .from("prompts")
-      .insert([trashItem]);
+      .insert([promptData]);
 
     if (insertError) {
       throw new Error(`Failed to restore prompt: ${insertError.message}`);

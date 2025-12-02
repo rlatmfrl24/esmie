@@ -78,7 +78,14 @@ export function TrashTable({ data }: TrashTableProps) {
         }
 
         // 2. Insert back into prompts
-        const { deleted_at, is_favorite, ...promptData } = trashItem;
+        const {
+          deleted_at,
+          is_favorite,
+          origin_type,
+          prompt_id,
+          item_uid,
+          ...promptData
+        } = trashItem;
         const { error: insertError } = await supabase
           .from("prompts")
           .insert([promptData]);
@@ -139,7 +146,14 @@ export function TrashTable({ data }: TrashTableProps) {
 
         // 2. Insert back into prompts
         const promptsToRestore = trashItems.map(
-          ({ deleted_at, is_favorite, ...rest }) => rest
+          ({
+            deleted_at,
+            is_favorite,
+            origin_type,
+            prompt_id,
+            item_uid,
+            ...rest
+          }) => rest
         );
         const { error: insertError } = await supabase
           .from("prompts")
