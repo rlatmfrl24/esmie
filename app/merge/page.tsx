@@ -51,7 +51,7 @@ export default async function MergePage({
     .join("\n-------------\n");
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
+    <div className="container max-w-4xl mx-auto py-8 px-4 font-sans">
       <div className="mb-6">
         <Link
           href="/"
