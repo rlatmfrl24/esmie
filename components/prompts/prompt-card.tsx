@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Trash2, Copy, Quote, Sparkles } from "lucide-react";
+import { Trash2, Copy, Quote, Sparkles, CopyPlus } from "lucide-react";
 import { createClient } from "@/lib/client";
 import { Prompt } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,6 +43,8 @@ export function PromptCard({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isAddingPrompt, setIsAddingPrompt] = useState(false);
+  const [isAddSuccess, setIsAddSuccess] = useState(false);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -84,6 +86,61 @@ export function PromptCard({
       );
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleAddToPrompts = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isAddingPrompt) return;
+
+    setIsAddingPrompt(true);
+    setIsAddSuccess(false);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("사용자 인증이 필요합니다.");
+      }
+
+      const {
+        id: _id,
+        created_at: _createdAt,
+        user_id: _userId,
+        ...rest
+      } = prompt;
+
+      void _id;
+      void _createdAt;
+      void _userId;
+
+      const insertPayload = {
+        ...rest,
+        user_id: user.id,
+        details: rest.details ?? "",
+      };
+
+      const { error } = await supabase.from("prompts").insert([insertPayload]);
+
+      if (error) {
+        throw error;
+      }
+
+      setIsAddSuccess(true);
+      setTimeout(() => setIsAddSuccess(false), 2000);
+    } catch (error) {
+      console.error("프롬프트 추가 중 오류:", error);
+      alert(
+        `프롬프트 추가 중 오류가 발생했습니다: ${
+          error instanceof Error ? error.message : "알 수 없는 오류"
+        }`
+      );
+    } finally {
+      setIsAddingPrompt(false);
     }
   };
 
@@ -178,6 +235,20 @@ export function PromptCard({
         </CardContent>
 
         <CardFooter className="flex justify-start gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-2"
+            onClick={handleAddToPrompts}
+            disabled={isAddingPrompt}
+          >
+            <CopyPlus className="w-4 h-4" />
+            {isAddSuccess
+              ? "추가 완료"
+              : isAddingPrompt
+              ? "복사 중..."
+              : "Add to Prompts"}
+          </Button>
           <Button
             variant="outline"
             size="sm"

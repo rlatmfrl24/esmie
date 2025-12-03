@@ -8,6 +8,7 @@ import { FeedbackSheet } from "@/components/shared/feedback-sheet";
 import { Calendar, Sparkles } from "lucide-react";
 import { VersionSelector } from "@/components/prompts/version-selector";
 import { DuplicatePromptButton } from "@/components/prompts/duplicate-prompt-button";
+import { AddToFavoriteButton } from "@/components/prompts/add-to-favorite-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { EditPromptSheet } from "@/components/prompts/edit-prompt-sheet";
@@ -107,6 +108,7 @@ export default async function PromptDetailPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <AddToFavoriteButton prompt={p} />
             {!isViewingHistory && <EditPromptSheet prompt={p} />}
             {!isViewingHistory && <DuplicatePromptButton prompt={p} />}
             {!isViewingHistory && <FeedbackSheet prompt={p} />}

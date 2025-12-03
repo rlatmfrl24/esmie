@@ -107,7 +107,7 @@ export default function SettingsPage() {
               <Textarea
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
-                className="min-h-[500px] font-mono text-sm"
+                className="h-[500px] max-h-[calc(100vh-550px)] overflow-y-auto font-mono text-sm"
                 placeholder="Enter system instruction..."
               />
               <div className="flex justify-end items-center gap-2">
@@ -147,7 +147,7 @@ export default function SettingsPage() {
               <Textarea
                 value={imageInstruction}
                 onChange={(e) => setImageInstruction(e.target.value)}
-                className="min-h-[500px] font-mono text-sm"
+                className="h-[500px] max-h-[calc(100vh-450px)] overflow-y-auto font-mono text-sm"
                 placeholder="Enter image analysis instruction..."
               />
               <div className="flex justify-end items-center gap-2">
