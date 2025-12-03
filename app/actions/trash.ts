@@ -70,10 +70,10 @@ export async function restorePrompt(id: string) {
       }
     } else {
       // Restore to prompts (default for PROMPT or undefined)
-      const restoredPrompt = {
-        ...promptData,
-        id: item_uid || promptData.id,
-      };
+      // Only include id if item_uid exists, otherwise let database auto-generate UUID
+      const restoredPrompt = item_uid
+        ? { ...promptData, id: item_uid }
+        : promptData;
       const { error: insertError } = await supabase
         .from("prompts")
         .insert([restoredPrompt]);

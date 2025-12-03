@@ -131,10 +131,10 @@ export function TrashTable({ data }: TrashTableProps) {
           }
         } else {
           // Restore to prompts (default for PROMPT or undefined)
-          const restoredPrompt = {
-            ...promptData,
-            id: item_uid || promptData.id,
-          };
+          // Only include id if item_uid exists, otherwise let database auto-generate UUID
+          const restoredPrompt = item_uid
+            ? { ...promptData, id: item_uid }
+            : promptData;
           const { error: insertError } = await supabase
             .from("prompts")
             .insert([restoredPrompt]);
@@ -219,10 +219,8 @@ export function TrashTable({ data }: TrashTableProps) {
               item_uid: null,
             });
           } else {
-            const restoredPrompt = {
-              ...rest,
-              id: item_uid || rest.id,
-            };
+            // Only include id if item_uid exists, otherwise let database auto-generate UUID
+            const restoredPrompt = item_uid ? { ...rest, id: item_uid } : rest;
             promptsToRestore.push(restoredPrompt);
           }
         });

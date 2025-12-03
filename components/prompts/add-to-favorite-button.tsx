@@ -77,13 +77,10 @@ export function AddToFavoriteButton({ prompt }: AddToFavoriteButtonProps) {
     >
       <Heart className="w-4 h-4" />
       {state === "success"
-        ? "즐겨찾기 완료"
+        ? "Favorite Added"
         : state === "loading"
-          ? "추가 중..."
-          : "즐겨찾기 추가"}
+        ? "Adding to Favorite..."
+        : "Add to Favorite"}
     </Button>
   );
 }
-
-
-
