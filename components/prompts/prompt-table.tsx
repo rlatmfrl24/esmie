@@ -166,6 +166,9 @@ export function PromptTable({ data }: PromptTableProps) {
       const {
         data: { user: currentUser },
       } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
 
       // 2. Insert into trash with origin_type
       // Ensure user_id is included for RLS policy
@@ -187,7 +190,7 @@ export function PromptTable({ data }: PromptTableProps) {
             aspect_ratio: rest.aspect_ratio,
             details: rest.details,
             created_at: rest.created_at,
-            user_id: promptUserId || currentUser?.id, // Include user_id for RLS
+            user_id: promptUserId || currentUser.id, // Include user_id for RLS
             item_uid: id, // Store original UUID id for restoration reference
             origin_type: "PROMPT" as const,
           };
