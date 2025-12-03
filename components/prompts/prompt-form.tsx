@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,7 +47,6 @@ export function PromptForm({
   submitError,
 }: PromptFormProps) {
   const [errors, setErrors] = useState<FormErrors>({});
-  const [, startHydrationTransition] = useTransition();
   const [formData, setFormData] = useState<PromptFormState>({
     coreTheme: "",
     hair: "",
@@ -66,13 +65,11 @@ export function PromptForm({
   // Update form data when initialData changes
   useEffect(() => {
     if (!initialData) return;
-    startHydrationTransition(() => {
-      setFormData((prev) => ({
-        ...prev,
-        ...initialData,
-      }));
-    });
-  }, [initialData, startHydrationTransition]);
+    setFormData((prev) => ({
+      ...prev,
+      ...initialData,
+    }));
+  }, [initialData]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
