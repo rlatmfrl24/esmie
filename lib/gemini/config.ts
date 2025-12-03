@@ -87,8 +87,6 @@ export const IMAGE_ANALYSIS_INSTRUCTION = `
 
 4.  **Background Elimination (배경 완전 배제):**
     * 프롬프트 생성 시 배경은 무조건 \`Simple solid background\` 또는 \`Soft studio lighting\`으로 고정하여 의상에 대한 노이즈를 제거하십시오.
-
-    * 프롬프트 생성 시 배경은 무조건 \`Simple solid background\` 또는 \`Soft studio lighting\`으로 고정하여 의상에 대한 노이즈를 제거하십시오.
 `;
 
 export const PROMPT_ATTRIBUTES_SCHEMA = {

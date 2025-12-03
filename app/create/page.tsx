@@ -44,7 +44,7 @@ export default function CreatePage() {
             <div className="p-2 bg-primary/10 rounded-full">
               <Sparkles className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-linear-to-b from-foreground to-foreground/70">
               Create New Prompt
             </h1>
           </div>
