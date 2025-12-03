@@ -54,7 +54,8 @@ export function RollbackButton({ prompt, promptId }: RollbackButtonProps) {
         toast.error(result.error || "Failed to rollback prompt");
       }
     } catch (error) {
-      toast.error("An unexpected error occurred");
+      toast.error("An unexpected error occurred: " + error);
+      console.error("An unexpected error occurred: ", error);
     } finally {
       setIsLoading(false);
     }

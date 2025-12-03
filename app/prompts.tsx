@@ -12,9 +12,6 @@ export default async function Prompts() {
 
   if (error) {
     console.error("Error fetching prompts:", error);
-  }
-
-  if (error) {
     return (
       <div className="flex flex-col flex-1 p-4 space-y-4">
         <h1 className="text-2xl font-bold">Prompts</h1>
@@ -25,25 +22,5 @@ export default async function Prompts() {
     );
   }
 
-  let promptsWithFavorites = (prompts as Prompt[]) || [];
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    const { data: favorites } = await supabase
-      .from("favorite_prompts")
-      .select("prompt_id")
-      .eq("user_id", user.id);
-
-    const favoriteIds = new Set(favorites?.map((f) => f.prompt_id));
-
-    promptsWithFavorites = promptsWithFavorites.map((p) => ({
-      ...p,
-      is_favorite: favoriteIds.has(p.id),
-    }));
-  }
-
-  return <PromptTable data={promptsWithFavorites} />;
+  return <PromptTable data={(prompts as Prompt[]) || []} />;
 }

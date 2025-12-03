@@ -17,9 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Trash2, Copy, Quote, Sparkles, Eye } from "lucide-react";
+import { Trash2, Copy, Quote, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/client";
-import { useRouter } from "next/navigation";
 import { Prompt } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -30,6 +29,7 @@ interface PromptCardProps {
   onToggleSelect?: (checked: boolean) => void;
   onDelete?: () => Promise<void>;
   deleteConfirmMessage?: string;
+  onCardClick?: () => void;
 }
 
 export function PromptCard({
@@ -38,8 +38,8 @@ export function PromptCard({
   onToggleSelect,
   onDelete,
   deleteConfirmMessage,
+  onCardClick,
 }: PromptCardProps) {
-  const router = useRouter();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -90,12 +90,17 @@ export function PromptCard({
   return (
     <>
       <Card
-        onClick={() => router.push(`/prompt/${prompt.id}`)}
+        onClick={() => {
+          if (onCardClick) {
+            onCardClick();
+          }
+        }}
         className={cn(
-          "h-full flex flex-col cursor-pointer group relative overflow-hidden border-muted-foreground/20 transition-all hover:shadow-md",
+          "h-full flex flex-col group relative overflow-hidden border-muted-foreground/20 transition-all",
           isSelected
             ? "border-primary shadow-md ring-1 ring-primary bg-primary/5"
-            : "hover:border-primary/50"
+            : "hover:border-primary/50",
+          !onCardClick && "cursor-default"
         )}
       >
         <CardHeader>
@@ -137,7 +142,7 @@ export function PromptCard({
           </div>
         </CardHeader>
 
-        <CardContent className="flex-1">
+        <CardContent className="flex-1 space-y-4">
           {/* Full Prompt Section */}
           {prompt.final_prompt && (
             <div className="space-y-2">

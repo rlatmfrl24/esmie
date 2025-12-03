@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,7 @@ export function PromptForm({
   submitError,
 }: PromptFormProps) {
   const [errors, setErrors] = useState<FormErrors>({});
+  const [, startHydrationTransition] = useTransition();
   const [formData, setFormData] = useState<PromptFormState>({
     coreTheme: "",
     hair: "",
@@ -64,13 +65,14 @@ export function PromptForm({
 
   // Update form data when initialData changes
   useEffect(() => {
-    if (initialData) {
+    if (!initialData) return;
+    startHydrationTransition(() => {
       setFormData((prev) => ({
         ...prev,
         ...initialData,
       }));
-    }
-  }, [initialData]);
+    });
+  }, [initialData, startHydrationTransition]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -109,7 +111,7 @@ export function PromptForm({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -130,7 +132,10 @@ export function PromptForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0 font-sans">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col h-full min-h-0 font-sans"
+    >
       <div className="grid gap-4 overflow-y-auto flex-1 min-h-0 px-6">
         {submitError && (
           <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
@@ -161,9 +166,7 @@ export function PromptForm({
             placeholder="Enter your hair here"
             className={errors.hair ? "border-red-500" : ""}
           />
-          {errors.hair && (
-            <p className="text-sm text-red-500">{errors.hair}</p>
-          )}
+          {errors.hair && <p className="text-sm text-red-500">{errors.hair}</p>}
         </div>
         <div className="grid gap-3">
           <Label htmlFor="pose">Pose *</Label>
@@ -175,9 +178,7 @@ export function PromptForm({
             placeholder="Enter your pose here"
             className={errors.pose ? "border-red-500" : ""}
           />
-          {errors.pose && (
-            <p className="text-sm text-red-500">{errors.pose}</p>
-          )}
+          {errors.pose && <p className="text-sm text-red-500">{errors.pose}</p>}
         </div>
         <div className="grid gap-3">
           <Label htmlFor="outfit">Outfit *</Label>
@@ -217,9 +218,7 @@ export function PromptForm({
             placeholder="Enter your gaze here"
             className={errors.gaze ? "border-red-500" : ""}
           />
-          {errors.gaze && (
-            <p className="text-sm text-red-500">{errors.gaze}</p>
-          )}
+          {errors.gaze && <p className="text-sm text-red-500">{errors.gaze}</p>}
         </div>
         <div className="grid gap-3">
           <Label htmlFor="makeup">Makeup *</Label>

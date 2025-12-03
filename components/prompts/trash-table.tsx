@@ -10,7 +10,7 @@ import {
   SortingState,
   RowSelectionState,
 } from "@tanstack/react-table";
-import { Prompt } from "@/lib/types";
+import { TrashItem } from "@/lib/types";
 import {
   TableBody,
   TableCell,
@@ -40,8 +40,29 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+const stripTrashMetadata = <T extends Record<string, unknown>>(item: T) => {
+  const clone = { ...item } as Record<string, unknown>;
+  delete clone.id;
+  delete clone.deleted_at;
+  delete clone.is_favorite;
+  delete clone.prompt_id;
+  delete clone.favorite_id;
+  delete clone.favorite_status;
+  delete clone.favorite_snapshot_created_at;
+  return clone as Omit<
+    T,
+    | "id"
+    | "deleted_at"
+    | "is_favorite"
+    | "prompt_id"
+    | "favorite_id"
+    | "favorite_status"
+    | "favorite_snapshot_created_at"
+  >;
+};
+
 interface TrashTableProps {
-  data: Prompt[];
+  data: TrashItem[];
 }
 
 export function TrashTable({ data }: TrashTableProps) {
@@ -77,21 +98,50 @@ export function TrashTable({ data }: TrashTableProps) {
           throw new Error(`Failed to fetch from trash: ${fetchError?.message}`);
         }
 
-        // 2. Insert back into prompts
-        const {
-          deleted_at,
-          is_favorite,
-          origin_type,
-          prompt_id,
-          item_uid,
-          ...promptData
-        } = trashItem;
-        const { error: insertError } = await supabase
-          .from("prompts")
-          .insert([promptData]);
+        // 2. Insert back into appropriate table based on origin_type
+        // Note: trash table has bigint id, but target tables use UUID id
+        // Exclude trash-specific fields and id (target tables will auto-generate UUID id)
+        const { origin_type, item_uid, ...trashRest } = trashItem;
+        const promptData = stripTrashMetadata(trashRest);
 
-        if (insertError) {
-          throw new Error(`Failed to restore prompt: ${insertError.message}`);
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
+
+        if (origin_type === "FAVORITE") {
+          // Restore to favorite_prompts
+          // Exclude id (favorite_prompts will auto-generate UUID id)
+          const { error: insertError } = await supabase
+            .from("favorite_prompts")
+            .insert([
+              {
+                ...promptData,
+                user_id: user.id,
+                item_uid: null,
+              },
+            ]);
+
+          if (insertError) {
+            throw new Error(
+              `Failed to restore favorite: ${insertError.message}`
+            );
+          }
+        } else {
+          // Restore to prompts (default for PROMPT or undefined)
+          const restoredPrompt = {
+            ...promptData,
+            id: item_uid || promptData.id,
+          };
+          const { error: insertError } = await supabase
+            .from("prompts")
+            .insert([restoredPrompt]);
+
+          if (insertError) {
+            throw new Error(`Failed to restore prompt: ${insertError.message}`);
+          }
         }
 
         // 3. Delete from trash
@@ -120,9 +170,11 @@ export function TrashTable({ data }: TrashTableProps) {
       setActionId(null);
       setActionType(null);
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred";
       console.error(`Error ${actionType}ing prompt:`, error);
-      alert(`Failed to ${actionType} prompt: ${error.message}`);
+      alert(`Failed to ${actionType} prompt: ${message}`);
     } finally {
       setIsProcessing(false);
     }
@@ -144,23 +196,58 @@ export function TrashTable({ data }: TrashTableProps) {
         if (fetchError)
           throw new Error(`Failed to fetch from trash: ${fetchError.message}`);
 
-        // 2. Insert back into prompts
-        const promptsToRestore = trashItems.map(
-          ({
-            deleted_at,
-            is_favorite,
-            origin_type,
-            prompt_id,
-            item_uid,
-            ...rest
-          }) => rest
-        );
-        const { error: insertError } = await supabase
-          .from("prompts")
-          .insert(promptsToRestore);
+        // 2. Insert back into appropriate tables based on origin_type
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
 
-        if (insertError)
-          throw new Error(`Failed to restore prompts: ${insertError.message}`);
+        const promptsToRestore: Record<string, unknown>[] = [];
+        const favoritesToRestore: Record<string, unknown>[] = [];
+
+        trashItems.forEach((item) => {
+          const { origin_type, item_uid, ...trashRest } = item;
+          const rest = stripTrashMetadata(trashRest);
+
+          if (origin_type === "FAVORITE") {
+            // Exclude id (favorite_prompts will auto-generate UUID id)
+            favoritesToRestore.push({
+              ...rest,
+              user_id: user.id,
+              item_uid: null,
+            });
+          } else {
+            const restoredPrompt = {
+              ...rest,
+              id: item_uid || rest.id,
+            };
+            promptsToRestore.push(restoredPrompt);
+          }
+        });
+
+        if (promptsToRestore.length > 0) {
+          const { error: insertError } = await supabase
+            .from("prompts")
+            .insert(promptsToRestore);
+
+          if (insertError)
+            throw new Error(
+              `Failed to restore prompts: ${insertError.message}`
+            );
+        }
+
+        if (favoritesToRestore.length > 0) {
+          const { error: insertError } = await supabase
+            .from("favorite_prompts")
+            .insert(favoritesToRestore);
+
+          if (insertError)
+            throw new Error(
+              `Failed to restore favorites: ${insertError.message}`
+            );
+        }
 
         // 3. Delete from trash
         const { error: deleteError } = await supabase
@@ -191,15 +278,17 @@ export function TrashTable({ data }: TrashTableProps) {
       setShowBulkActionDialog(false);
       setBulkActionType(null);
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred";
       console.error(`Error ${bulkActionType}ing prompts:`, error);
-      toast.error(`Failed to ${bulkActionType} prompts: ${error.message}`);
+      toast.error(`Failed to ${bulkActionType} prompts: ${message}`);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const columns: ColumnDef<Prompt>[] = [
+  const columns: ColumnDef<TrashItem>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -259,6 +348,19 @@ export function TrashTable({ data }: TrashTableProps) {
           </div>
         );
       },
+    },
+    {
+      accessorKey: "origin_type",
+      header: "Origin",
+      cell: ({ row }) => {
+        const originType = row.getValue("origin_type") as string;
+        return (
+          <Badge variant={originType === "FAVORITE" ? "secondary" : "outline"}>
+            {originType || "PROMPT"}
+          </Badge>
+        );
+      },
+      size: 100,
     },
     {
       accessorKey: "created_at", // Using created_at as proxy for deleted_at if not available, or just showing created date

@@ -31,7 +31,6 @@ import {
   ArrowUpDown,
   Copy,
   Layers,
-  Heart,
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -87,16 +86,46 @@ export function PromptTable({ data }: PromptTableProps) {
         throw new Error(`Failed to fetch prompt: ${fetchError.message}`);
       }
 
-      // 2. Insert into trash table
+      // 2. Insert into trash table with origin_type
+      // Ensure user_id is included for RLS policy
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      // Insert into trash with only the fields that trash table needs
+      // Exclude id (trash table has auto-generated bigint id)
+      // Store original id in item_uid for restoration reference
+      const { id, ...rest } = promptData;
+      const insertData: Record<string, unknown> = {
+        core_theme: rest.core_theme,
+        version: rest.version,
+        hair: rest.hair,
+        pose: rest.pose,
+        outfit: rest.outfit,
+        atmosphere: rest.atmosphere,
+        gaze: rest.gaze,
+        makeup: rest.makeup,
+        background: rest.background,
+        final_prompt: rest.final_prompt,
+        aspect_ratio: rest.aspect_ratio,
+        details: rest.details,
+        created_at: rest.created_at,
+        user_id: rest.user_id || currentUser.id, // Include user_id for RLS
+        item_uid: id, // Store original UUID id for restoration reference
+        origin_type: "PROMPT",
+      };
       const { error: insertError } = await supabase
         .from("trash")
-        .insert([promptData]);
+        .insert([insertData]);
 
       if (insertError) {
         throw new Error(`Failed to move to trash: ${insertError.message}`);
       }
 
-      // 3. Delete from prompts table
+      // 3. Delete from prompts table (favorites remain untouched as independent snapshots)
       const { error: deleteError } = await supabase
         .from("prompts")
         .delete()
@@ -109,9 +138,11 @@ export function PromptTable({ data }: PromptTableProps) {
       setDeleteId(null);
       setRowSelection({});
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred";
       console.error("Error deleting prompt:", error);
-      alert(error.message || "An unexpected error occurred");
+      alert(message);
     } finally {
       setIsDeleting(false);
     }
@@ -132,15 +163,45 @@ export function PromptTable({ data }: PromptTableProps) {
       if (fetchError)
         throw new Error(`Failed to fetch prompts: ${fetchError.message}`);
 
-      // 2. Insert into trash
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+
+      // 2. Insert into trash with origin_type
+      // Ensure user_id is included for RLS policy
+      // Exclude id (trash table has auto-generated bigint id)
+      // Store original id in item_uid for restoration reference
+      const promptsWithOriginType = promptsData.map(
+        ({ id, user_id: promptUserId, ...rest }) => {
+          const insertData: Record<string, unknown> = {
+            core_theme: rest.core_theme,
+            version: rest.version,
+            hair: rest.hair,
+            pose: rest.pose,
+            outfit: rest.outfit,
+            atmosphere: rest.atmosphere,
+            gaze: rest.gaze,
+            makeup: rest.makeup,
+            background: rest.background,
+            final_prompt: rest.final_prompt,
+            aspect_ratio: rest.aspect_ratio,
+            details: rest.details,
+            created_at: rest.created_at,
+            user_id: promptUserId || currentUser?.id, // Include user_id for RLS
+            item_uid: id, // Store original UUID id for restoration reference
+            origin_type: "PROMPT" as const,
+          };
+          return insertData;
+        }
+      );
       const { error: insertError } = await supabase
         .from("trash")
-        .insert(promptsData);
+        .insert(promptsWithOriginType);
 
       if (insertError)
         throw new Error(`Failed to move to trash: ${insertError.message}`);
 
-      // 3. Delete from prompts
+      // 3. Delete from prompts (favorites remain untouched as independent snapshots)
       const { error: deleteError } = await supabase
         .from("prompts")
         .delete()
@@ -153,9 +214,11 @@ export function PromptTable({ data }: PromptTableProps) {
       setShowBulkDeleteDialog(false);
       router.refresh();
       toast.success(`${selectedIds.length} prompts moved to trash`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred";
       console.error("Error deleting prompts:", error);
-      toast.error(error.message || "An unexpected error occurred");
+      toast.error(message);
     } finally {
       setIsDeleting(false);
     }
@@ -193,32 +256,6 @@ export function PromptTable({ data }: PromptTableProps) {
       ),
       enableSorting: false,
       enableHiding: false,
-    },
-    {
-      accessorKey: "is_favorite",
-      header: ({ column }) => (
-        <div
-          className="flex items-center justify-center cursor-pointer hover:text-foreground"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Fav
-          {column.getIsSorted() ? (
-            <ArrowUpDown className="ml-2 h-3 w-3" />
-          ) : null}
-        </div>
-      ),
-      cell: ({ row }) => (
-        <div className="flex justify-center">
-          {row.original.is_favorite ? (
-            <Heart className="h-4 w-4 text-red-500 fill-current" />
-          ) : (
-            <Heart className="h-4 w-4 text-muted-foreground opacity-20" />
-          )}
-        </div>
-      ),
-      enableSorting: true,
-      enableHiding: false,
-      size: 50,
     },
     {
       accessorKey: "version",

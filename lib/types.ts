@@ -13,7 +13,18 @@ export interface Prompt {
   aspect_ratio: string;
   created_at?: string;
   details?: string;
-  is_favorite?: boolean;
+  user_id?: string;
+}
+
+export type FavoritePrompt = Prompt;
+
+export type OriginType = "PROMPT" | "FAVORITE";
+
+export interface TrashItem extends Prompt {
+  deleted_at?: string;
+  origin_type?: OriginType;
+  prompt_id?: string;
+  item_uid?: string;
 }
 
 interface PromptFormData {

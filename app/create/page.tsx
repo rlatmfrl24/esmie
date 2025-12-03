@@ -6,9 +6,8 @@ import { CreateModeSelector } from "@/components/create/create-mode-selector";
 import { KeywordsInput } from "@/components/create/keywords-input";
 import { PromptInput } from "@/components/create/prompt-input";
 import { ImageInput } from "@/components/create/image-input";
-import { PromptForm } from "@/components/prompts/prompt-form";  
+import { PromptForm } from "@/components/prompts/prompt-form";
 import { useCreatePrompt } from "./use-create-prompt";
-import { cn } from "@/lib/utils";
 
 export default function CreatePage() {
   const {
@@ -26,7 +25,7 @@ export default function CreatePage() {
   } = useCreatePrompt();
 
   return (
-    <div className="bg-gradient-to-b from-background to-muted/20 flex-1">
+    <div className="bg-linear-gradient(to bottom, #000000, #1a1a1a) flex-1">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header Section */}
         <div className="flex flex-col space-y-2 mb-12 text-center relative">
@@ -40,20 +39,27 @@ export default function CreatePage() {
               Back
             </Button>
           )}
-          
+
           <div className="flex items-center justify-center space-x-2">
             <div className="p-2 bg-primary/10 rounded-full">
               <Sparkles className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-linear-gradient(to bottom, #000000, #1a1a1a)">
               Create New Prompt
             </h1>
           </div>
           <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
-            {step === "selection" && "Choose how you want to start creating your masterpiece."}
-            {step === "input" && mode === "keywords" && "Select keywords to build your prompt."}
-            {step === "input" && mode === "prompt" && "Describe what you want to see."}
-            {step === "input" && mode === "image" && "Upload an image to use as a reference."}
+            {step === "selection" &&
+              "Choose how you want to start creating your masterpiece."}
+            {step === "input" &&
+              mode === "keywords" &&
+              "Select keywords to build your prompt."}
+            {step === "input" &&
+              mode === "prompt" &&
+              "Describe what you want to see."}
+            {step === "input" &&
+              mode === "image" &&
+              "Upload an image to use as a reference."}
             {step === "review" && "Review and fine-tune your generated prompt."}
           </p>
         </div>
@@ -110,7 +116,8 @@ export default function CreatePage() {
                     Review & Edit
                   </h2>
                   <p className="text-muted-foreground mt-1">
-                    We've generated a prompt based on your input. Customize it to perfection.
+                    We&apos;ve generated a prompt based on your input. Customize
+                    it to perfection.
                   </p>
                 </div>
                 <div className="p-6 md:p-8">
@@ -130,4 +137,3 @@ export default function CreatePage() {
     </div>
   );
 }
-
