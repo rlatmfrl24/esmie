@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { MergeClient } from "./merge-client";
+import { Prompt } from "@/lib/types";
 
 export default async function MergePage({
   searchParams,
@@ -45,8 +46,25 @@ export default async function MergePage({
     );
   }
 
+  // --ar 키워드가 없으면 prompt의 aspect_ratio 값을 사용하여 자동으로 추가하는 함수
+  const ensureAspectRatio = (prompt: Prompt): string => {
+    const text = prompt.final_prompt || "";
+    if (!text.trim()) return text;
+
+    // --ar 키워드가 이미 있는지 확인 (--ar 뒤에 숫자나 비율이 오는 경우)
+    const hasAspectRatio = /--ar\s+[\d:\.]+/i.test(text);
+
+    if (!hasAspectRatio) {
+      // --ar 키워드가 없으면 prompt의 aspect_ratio 값을 사용하여 추가
+      const aspectRatio = prompt.aspect_ratio || "1:1";
+      return `${text.trim()} --ar ${aspectRatio}`;
+    }
+
+    return text;
+  };
+
   const mergedText = prompts
-    .map((p) => p.final_prompt || "")
+    .map((p) => ensureAspectRatio(p as Prompt))
     .filter((text) => text.trim() !== "")
     .join("\n-------------\n");
 
