@@ -42,8 +42,10 @@ export function DuplicatePromptButton({ prompt }: DuplicatePromptButtonProps) {
         throw new Error("사용자 인증이 필요합니다.");
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { id, created_at, ...promptData } = prompt;
+      const { id: _promptId, created_at: _createdAt, ...promptData } = prompt;
+
+      void _promptId;
+      void _createdAt;
 
       const { error } = await supabase.from("prompts").insert({
         ...promptData,

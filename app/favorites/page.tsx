@@ -1,11 +1,7 @@
 import { createClient } from "@/lib/server";
 import { FavoritesList } from "./favorites-list";
 import { redirect } from "next/navigation";
-import { Prompt } from "@/lib/types";
-
-interface FavoritePrompt extends Prompt {
-  prompt_id: string;
-}
+import { FavoritePrompt } from "@/lib/types";
 
 export default async function FavoritesPage() {
   const supabase = await createClient();

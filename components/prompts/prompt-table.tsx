@@ -26,7 +26,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, ArrowUpDown, Copy, Layers, Heart } from "lucide-react";
+import {
+  MoreHorizontal,
+  ArrowUpDown,
+  Copy,
+  Layers,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/client";
 import Link from "next/link";
@@ -39,6 +45,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface PromptTableProps {
   data: Prompt[];
@@ -48,6 +55,7 @@ export function PromptTable({ data }: PromptTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCopied, setIsCopied] = useState<string | null>(null);
 
@@ -78,16 +86,46 @@ export function PromptTable({ data }: PromptTableProps) {
         throw new Error(`Failed to fetch prompt: ${fetchError.message}`);
       }
 
-      // 2. Insert into trash table
+      // 2. Insert into trash table with origin_type
+      // Ensure user_id is included for RLS policy
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      // Insert into trash with only the fields that trash table needs
+      // Exclude id (trash table has auto-generated bigint id)
+      // Store original id in item_uid for restoration reference
+      const { id, ...rest } = promptData;
+      const insertData: Record<string, unknown> = {
+        core_theme: rest.core_theme,
+        version: rest.version,
+        hair: rest.hair,
+        pose: rest.pose,
+        outfit: rest.outfit,
+        atmosphere: rest.atmosphere,
+        gaze: rest.gaze,
+        makeup: rest.makeup,
+        background: rest.background,
+        final_prompt: rest.final_prompt,
+        aspect_ratio: rest.aspect_ratio,
+        details: rest.details,
+        created_at: rest.created_at,
+        user_id: rest.user_id || currentUser.id, // Include user_id for RLS
+        item_uid: id, // Store original UUID id for restoration reference
+        origin_type: "PROMPT",
+      };
       const { error: insertError } = await supabase
         .from("trash")
-        .insert([promptData]);
+        .insert([insertData]);
 
       if (insertError) {
         throw new Error(`Failed to move to trash: ${insertError.message}`);
       }
 
-      // 3. Delete from prompts table
+      // 3. Delete from prompts table (favorites remain untouched as independent snapshots)
       const { error: deleteError } = await supabase
         .from("prompts")
         .delete()
@@ -100,9 +138,90 @@ export function PromptTable({ data }: PromptTableProps) {
       setDeleteId(null);
       setRowSelection({});
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred";
       console.error("Error deleting prompt:", error);
-      alert(error.message || "An unexpected error occurred");
+      alert(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const selectedIds = Object.keys(rowSelection);
+    if (selectedIds.length === 0) return;
+
+    setIsDeleting(true);
+    try {
+      // 1. Fetch all prompts to be deleted
+      const { data: promptsData, error: fetchError } = await supabase
+        .from("prompts")
+        .select("*")
+        .in("id", selectedIds);
+
+      if (fetchError)
+        throw new Error(`Failed to fetch prompts: ${fetchError.message}`);
+
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      // 2. Insert into trash with origin_type
+      // Ensure user_id is included for RLS policy
+      // Exclude id (trash table has auto-generated bigint id)
+      // Store original id in item_uid for restoration reference
+      const promptsWithOriginType = promptsData.map(
+        ({ id, user_id: promptUserId, ...rest }) => {
+          const insertData: Record<string, unknown> = {
+            core_theme: rest.core_theme,
+            version: rest.version,
+            hair: rest.hair,
+            pose: rest.pose,
+            outfit: rest.outfit,
+            atmosphere: rest.atmosphere,
+            gaze: rest.gaze,
+            makeup: rest.makeup,
+            background: rest.background,
+            final_prompt: rest.final_prompt,
+            aspect_ratio: rest.aspect_ratio,
+            details: rest.details,
+            created_at: rest.created_at,
+            user_id: promptUserId || currentUser.id, // Include user_id for RLS
+            item_uid: id, // Store original UUID id for restoration reference
+            origin_type: "PROMPT" as const,
+          };
+          return insertData;
+        }
+      );
+      const { error: insertError } = await supabase
+        .from("trash")
+        .insert(promptsWithOriginType);
+
+      if (insertError)
+        throw new Error(`Failed to move to trash: ${insertError.message}`);
+
+      // 3. Delete from prompts (favorites remain untouched as independent snapshots)
+      const { error: deleteError } = await supabase
+        .from("prompts")
+        .delete()
+        .in("id", selectedIds);
+
+      if (deleteError)
+        throw new Error(`Failed to delete prompts: ${deleteError.message}`);
+
+      setRowSelection({});
+      setShowBulkDeleteDialog(false);
+      router.refresh();
+      toast.success(`${selectedIds.length} prompts moved to trash`);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred";
+      console.error("Error deleting prompts:", error);
+      toast.error(message);
     } finally {
       setIsDeleting(false);
     }
@@ -140,34 +259,6 @@ export function PromptTable({ data }: PromptTableProps) {
       ),
       enableSorting: false,
       enableHiding: false,
-    },
-    {
-      accessorKey: "is_favorite",
-      header: ({ column }) => (
-        <div
-          className="flex items-center justify-center cursor-pointer hover:text-foreground"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Fav
-          {
-            column.getIsSorted() ? (
-              <ArrowUpDown className="ml-2 h-3 w-3" />
-            ) : null
-          }
-        </div>
-      ),
-      cell: ({ row }) => (
-        <div className="flex justify-center">
-          {row.original.is_favorite ? (
-            <Heart className="h-4 w-4 text-red-500 fill-current" />
-          ) : (
-            <Heart className="h-4 w-4 text-muted-foreground opacity-20" />
-          )}
-        </div>
-      ),
-      enableSorting: true,
-      enableHiding: false,
-      size: 50,
     },
     {
       accessorKey: "version",
@@ -270,7 +361,7 @@ export function PromptTable({ data }: PromptTableProps) {
 
         return (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger className="ml-auto font-sans" asChild>
               <Button
                 variant="ghost"
                 className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
@@ -279,15 +370,12 @@ export function PromptTable({ data }: PromptTableProps) {
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[160px]">
+            <DropdownMenuContent align="end" className="w-[160px] font-sans">
               <DropdownMenuItem
                 onClick={() => setDeleteId(prompt.id)}
                 className="text-destructive focus:text-destructive"
               >
                 Delete
-                <span className="ml-auto text-xs tracking-widest opacity-60">
-                  ⌘⌫
-                </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -329,6 +417,16 @@ export function PromptTable({ data }: PromptTableProps) {
               >
                 <Layers className="w-4 h-4" />
                 Merge ({Object.keys(rowSelection).length})
+              </Button>
+            )}
+            {Object.keys(rowSelection).length > 0 && (
+              <Button
+                onClick={() => setShowBulkDeleteDialog(true)}
+                variant="destructive"
+                className="gap-2 animate-in fade-in slide-in-from-right-5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete ({Object.keys(rowSelection).length})
               </Button>
             )}
           </div>
@@ -398,7 +496,7 @@ export function PromptTable({ data }: PromptTableProps) {
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
       >
-        <DialogContent>
+        <DialogContent className="font-sans">
           <DialogHeader>
             <DialogTitle>Delete Prompt</DialogTitle>
             <DialogDescription>
@@ -420,6 +518,37 @@ export function PromptTable({ data }: PromptTableProps) {
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showBulkDeleteDialog}
+        onOpenChange={(open) => !open && setShowBulkDeleteDialog(false)}
+      >
+        <DialogContent className="font-sans">
+          <DialogHeader>
+            <DialogTitle>Delete Prompts</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {Object.keys(rowSelection).length}{" "}
+              selected prompts? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowBulkDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete All"}
             </Button>
           </DialogFooter>
         </DialogContent>

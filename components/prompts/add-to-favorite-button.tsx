@@ -1,50 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Heart } from "lucide-react";
 import { createClient } from "@/lib/client";
 import { Prompt } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 interface AddToFavoriteButtonProps {
   prompt: Prompt;
 }
 
-export function AddToFavoriteButton({ prompt }: AddToFavoriteButtonProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+type ButtonState = "idle" | "loading" | "success";
 
+export function AddToFavoriteButton({ prompt }: AddToFavoriteButtonProps) {
+  const [state, setState] = useState<ButtonState>("idle");
   const supabase = createClient();
 
-  const checkFavoriteStatus = useCallback(async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  const handleAddToFavorite = async () => {
+    if (state === "loading") return;
+    setState("loading");
 
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("favorite_prompts")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("prompt_id", prompt.id)
-        .eq("version", prompt.version)
-        .maybeSingle();
-
-      setIsFavorite(!!data);
-    } catch (error) {
-      console.error("Error checking favorite status:", error);
-    }
-  }, [prompt.id, prompt.version, supabase]);
-
-  useEffect(() => {
-    checkFavoriteStatus();
-  }, [checkFavoriteStatus]);
-
-  const handleToggleFavorite = async () => {
-    setIsLoading(true);
     try {
       const {
         data: { user },
@@ -55,52 +30,57 @@ export function AddToFavoriteButton({ prompt }: AddToFavoriteButtonProps) {
         throw new Error("사용자 인증이 필요합니다.");
       }
 
-      if (isFavorite) {
-        // Remove from favorites
-        const { error } = await supabase
-          .from("favorite_prompts")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("prompt_id", prompt.id)
-          .eq("version", prompt.version);
+      const {
+        id: _id,
+        created_at: _createdAt,
+        user_id: _userId,
+        ...rest
+      } = prompt;
 
-        if (error) throw error;
-        setIsFavorite(false);
-      } else {
-        // Add to favorites
-        // id 값을 제외한 prompt 필드 + user_id + prompt_id 추가
-        const { id, ...promptDataWithoutId } = prompt;
-        const { error } = await supabase.from("favorite_prompts").insert({
-          ...promptDataWithoutId,
-          user_id: user.id,
-          item_uid: null,
-          prompt_id: id, // 명시적으로 원본 prompt_id 저장
-        });
+      void _id;
+      void _createdAt;
+      void _userId;
 
-        if (error) throw error;
-        setIsFavorite(true);
+      const insertPayload = {
+        ...rest,
+        user_id: user.id,
+        details: rest.details ?? "",
+      };
+
+      const { error } = await supabase
+        .from("favorite_prompts")
+        .insert([insertPayload]);
+
+      if (error) {
+        throw error;
       }
+
+      setState("success");
+      setTimeout(() => setState("idle"), 2000);
     } catch (error) {
-      console.error("즐겨찾기 변경 중 오류 발생:", error);
+      console.error("즐겨찾기 추가 중 오류:", error);
       alert(
-        `작업 실패: ${
+        `즐겨찾기 추가 중 오류가 발생했습니다: ${
           error instanceof Error ? error.message : "알 수 없는 오류"
         }`
       );
-    } finally {
-      setIsLoading(false);
+      setState("idle");
     }
   };
 
   return (
     <Button
-      onClick={handleToggleFavorite}
-      variant="outline"
-      disabled={isLoading}
-      className={cn(isFavorite && "text-red-500 hover:text-red-600")}
+      variant="secondary"
+      onClick={handleAddToFavorite}
+      disabled={state === "loading"}
+      className="gap-2"
     >
-      <Heart className={cn("w-4 h-4 mr-2", isFavorite && "fill-current")} />
-      {isFavorite ? "Favorited" : "Add to Favorite"}
+      <Heart className="w-4 h-4" />
+      {state === "success"
+        ? "Favorite Added"
+        : state === "loading"
+        ? "Adding to Favorite..."
+        : "Add to Favorite"}
     </Button>
   );
 }

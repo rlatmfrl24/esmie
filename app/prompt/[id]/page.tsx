@@ -108,9 +108,9 @@ export default async function PromptDetailPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <AddToFavoriteButton prompt={p} />
             {!isViewingHistory && <EditPromptSheet prompt={p} />}
             {!isViewingHistory && <DuplicatePromptButton prompt={p} />}
-            <AddToFavoriteButton prompt={p} />
             {!isViewingHistory && <FeedbackSheet prompt={p} />}
             {isViewingHistory && (
               <>

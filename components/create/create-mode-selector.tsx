@@ -1,6 +1,11 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Type, Image as ImageIcon, Edit3, Keyboard } from "lucide-react";
 
 export type CreateMode = "keywords" | "prompt" | "image" | "manual";
@@ -61,9 +66,3 @@ export function CreateModeSelector({ onSelect }: CreateModeSelectorProps) {
     </div>
   );
 }
-
-
-
-
-
-

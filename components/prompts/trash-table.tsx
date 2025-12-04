@@ -10,7 +10,7 @@ import {
   SortingState,
   RowSelectionState,
 } from "@tanstack/react-table";
-import { Prompt } from "@/lib/types";
+import { TrashItem } from "@/lib/types";
 import {
   TableBody,
   TableCell,
@@ -30,6 +30,7 @@ import { MoreHorizontal, ArrowUpDown, RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/client";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -39,15 +40,42 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+const stripTrashMetadata = <T extends Record<string, unknown>>(item: T) => {
+  const clone = { ...item } as Record<string, unknown>;
+  delete clone.id;
+  delete clone.deleted_at;
+  delete clone.is_favorite;
+  delete clone.prompt_id;
+  delete clone.favorite_id;
+  delete clone.favorite_status;
+  delete clone.favorite_snapshot_created_at;
+  return clone as Omit<
+    T,
+    | "id"
+    | "deleted_at"
+    | "is_favorite"
+    | "prompt_id"
+    | "favorite_id"
+    | "favorite_status"
+    | "favorite_snapshot_created_at"
+  >;
+};
+
 interface TrashTableProps {
-  data: Prompt[];
+  data: TrashItem[];
 }
 
 export function TrashTable({ data }: TrashTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [actionId, setActionId] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<"restore" | "delete" | null>(null);
+  const [actionType, setActionType] = useState<"restore" | "delete" | null>(
+    null
+  );
+  const [showBulkActionDialog, setShowBulkActionDialog] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<
+    "restore" | "delete" | null
+  >(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const router = useRouter();
@@ -70,14 +98,50 @@ export function TrashTable({ data }: TrashTableProps) {
           throw new Error(`Failed to fetch from trash: ${fetchError?.message}`);
         }
 
-        // 2. Insert back into prompts
-        const { deleted_at, is_favorite, ...promptData } = trashItem;
-        const { error: insertError } = await supabase
-          .from("prompts")
-          .insert([promptData]);
+        // 2. Insert back into appropriate table based on origin_type
+        // Note: trash table has bigint id, but target tables use UUID id
+        // Exclude trash-specific fields and id (target tables will auto-generate UUID id)
+        const { origin_type, item_uid, ...trashRest } = trashItem;
+        const promptData = stripTrashMetadata(trashRest);
 
-        if (insertError) {
-          throw new Error(`Failed to restore prompt: ${insertError.message}`);
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
+
+        if (origin_type === "FAVORITE") {
+          // Restore to favorite_prompts
+          // Exclude id (favorite_prompts will auto-generate UUID id)
+          const { error: insertError } = await supabase
+            .from("favorite_prompts")
+            .insert([
+              {
+                ...promptData,
+                user_id: user.id,
+                item_uid: null,
+              },
+            ]);
+
+          if (insertError) {
+            throw new Error(
+              `Failed to restore favorite: ${insertError.message}`
+            );
+          }
+        } else {
+          // Restore to prompts (default for PROMPT or undefined)
+          // Only include id if item_uid exists, otherwise let database auto-generate UUID
+          const restoredPrompt = item_uid
+            ? { ...promptData, id: item_uid }
+            : promptData;
+          const { error: insertError } = await supabase
+            .from("prompts")
+            .insert([restoredPrompt]);
+
+          if (insertError) {
+            throw new Error(`Failed to restore prompt: ${insertError.message}`);
+          }
         }
 
         // 3. Delete from trash
@@ -87,7 +151,9 @@ export function TrashTable({ data }: TrashTableProps) {
           .eq("id", actionId);
 
         if (deleteError) {
-          throw new Error(`Failed to remove from trash: ${deleteError.message}`);
+          throw new Error(
+            `Failed to remove from trash: ${deleteError.message}`
+          );
         }
       } else {
         // Delete permanently
@@ -100,19 +166,127 @@ export function TrashTable({ data }: TrashTableProps) {
           throw new Error(`Failed to delete permanently: ${error.message}`);
         }
       }
-      
+
       setActionId(null);
       setActionType(null);
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred";
       console.error(`Error ${actionType}ing prompt:`, error);
-      alert(`Failed to ${actionType} prompt: ${error.message}`);
+      alert(`Failed to ${actionType} prompt: ${message}`);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const columns: ColumnDef<Prompt>[] = [
+  const handleBulkAction = async () => {
+    const selectedIds = Object.keys(rowSelection);
+    if (selectedIds.length === 0 || !bulkActionType) return;
+
+    setIsProcessing(true);
+    try {
+      if (bulkActionType === "restore") {
+        // 1. Fetch from trash
+        const { data: trashItems, error: fetchError } = await supabase
+          .from("trash")
+          .select("*")
+          .in("id", selectedIds);
+
+        if (fetchError)
+          throw new Error(`Failed to fetch from trash: ${fetchError.message}`);
+
+        // 2. Insert back into appropriate tables based on origin_type
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
+
+        const promptsToRestore: Record<string, unknown>[] = [];
+        const favoritesToRestore: Record<string, unknown>[] = [];
+
+        trashItems.forEach((item) => {
+          const { origin_type, item_uid, ...trashRest } = item;
+          const rest = stripTrashMetadata(trashRest);
+
+          if (origin_type === "FAVORITE") {
+            // Exclude id (favorite_prompts will auto-generate UUID id)
+            favoritesToRestore.push({
+              ...rest,
+              user_id: user.id,
+              item_uid: null,
+            });
+          } else {
+            // Only include id if item_uid exists, otherwise let database auto-generate UUID
+            const restoredPrompt = item_uid ? { ...rest, id: item_uid } : rest;
+            promptsToRestore.push(restoredPrompt);
+          }
+        });
+
+        if (promptsToRestore.length > 0) {
+          const { error: insertError } = await supabase
+            .from("prompts")
+            .insert(promptsToRestore);
+
+          if (insertError)
+            throw new Error(
+              `Failed to restore prompts: ${insertError.message}`
+            );
+        }
+
+        if (favoritesToRestore.length > 0) {
+          const { error: insertError } = await supabase
+            .from("favorite_prompts")
+            .insert(favoritesToRestore);
+
+          if (insertError)
+            throw new Error(
+              `Failed to restore favorites: ${insertError.message}`
+            );
+        }
+
+        // 3. Delete from trash
+        const { error: deleteError } = await supabase
+          .from("trash")
+          .delete()
+          .in("id", selectedIds);
+
+        if (deleteError)
+          throw new Error(
+            `Failed to remove from trash: ${deleteError.message}`
+          );
+
+        toast.success(`${selectedIds.length} prompts restored successfully`);
+      } else {
+        // Delete permanently
+        const { error } = await supabase
+          .from("trash")
+          .delete()
+          .in("id", selectedIds);
+
+        if (error)
+          throw new Error(`Failed to delete permanently: ${error.message}`);
+
+        toast.success(`${selectedIds.length} prompts deleted permanently`);
+      }
+
+      setRowSelection({});
+      setShowBulkActionDialog(false);
+      setBulkActionType(null);
+      router.refresh();
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred";
+      console.error(`Error ${bulkActionType}ing prompts:`, error);
+      toast.error(`Failed to ${bulkActionType} prompts: ${message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const columns: ColumnDef<TrashItem>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -172,6 +346,19 @@ export function TrashTable({ data }: TrashTableProps) {
           </div>
         );
       },
+    },
+    {
+      accessorKey: "origin_type",
+      header: "Origin",
+      cell: ({ row }) => {
+        const originType = row.getValue("origin_type") as string;
+        return (
+          <Badge variant={originType === "FAVORITE" ? "secondary" : "outline"}>
+            {originType || "PROMPT"}
+          </Badge>
+        );
+      },
+      size: 100,
     },
     {
       accessorKey: "created_at", // Using created_at as proxy for deleted_at if not available, or just showing created date
@@ -258,9 +445,35 @@ export function TrashTable({ data }: TrashTableProps) {
       <div className="flex items-center justify-between space-y-2 shrink-0">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Trash</h2>
-          <p className="text-muted-foreground">
-            Manage your deleted prompts.
-          </p>
+          <p className="text-muted-foreground">Manage your deleted prompts.</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          {Object.keys(rowSelection).length > 0 && (
+            <>
+              <Button
+                onClick={() => {
+                  setBulkActionType("restore");
+                  setShowBulkActionDialog(true);
+                }}
+                variant="outline"
+                className="gap-2 animate-in fade-in slide-in-from-right-5"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Restore ({Object.keys(rowSelection).length})
+              </Button>
+              <Button
+                onClick={() => {
+                  setBulkActionType("delete");
+                  setShowBulkActionDialog(true);
+                }}
+                variant="destructive"
+                className="gap-2 animate-in fade-in slide-in-from-right-5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Forever ({Object.keys(rowSelection).length})
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -357,6 +570,58 @@ export function TrashTable({ data }: TrashTableProps) {
                 : actionType === "restore"
                 ? "Restore"
                 : "Delete Forever"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showBulkActionDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowBulkActionDialog(false);
+            setBulkActionType(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {bulkActionType === "restore"
+                ? "Restore Prompts"
+                : "Delete Forever"}
+            </DialogTitle>
+            <DialogDescription>
+              {bulkActionType === "restore"
+                ? `Are you sure you want to restore ${
+                    Object.keys(rowSelection).length
+                  } selected prompts? They will be moved back to your main list.`
+                : `Are you sure you want to permanently delete ${
+                    Object.keys(rowSelection).length
+                  } selected prompts? This action cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowBulkActionDialog(false);
+                setBulkActionType(null);
+              }}
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={bulkActionType === "delete" ? "destructive" : "default"}
+              onClick={handleBulkAction}
+              disabled={isProcessing}
+            >
+              {isProcessing
+                ? "Processing..."
+                : bulkActionType === "restore"
+                ? "Restore All"
+                : "Delete All Forever"}
             </Button>
           </DialogFooter>
         </DialogContent>

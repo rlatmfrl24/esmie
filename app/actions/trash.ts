@@ -3,6 +3,27 @@
 import { createClient } from "@/lib/server";
 import { revalidatePath } from "next/cache";
 
+const stripTrashMetadata = <T extends Record<string, unknown>>(item: T) => {
+  const clone = { ...item } as Record<string, unknown>;
+  delete clone.id;
+  delete clone.deleted_at;
+  delete clone.is_favorite;
+  delete clone.prompt_id;
+  delete clone.favorite_id;
+  delete clone.favorite_status;
+  delete clone.favorite_snapshot_created_at;
+  return clone as Omit<
+    T,
+    | "id"
+    | "deleted_at"
+    | "is_favorite"
+    | "prompt_id"
+    | "favorite_id"
+    | "favorite_status"
+    | "favorite_snapshot_created_at"
+  >;
+};
+
 export async function restorePrompt(id: string) {
   const supabase = await createClient();
 
@@ -18,13 +39,48 @@ export async function restorePrompt(id: string) {
       throw new Error(`Failed to fetch from trash: ${fetchError?.message}`);
     }
 
-    // 2. Insert back into prompts
-    const { error: insertError } = await supabase
-      .from("prompts")
-      .insert([trashItem]);
+    // 2. Insert back into appropriate table based on origin_type
+    // Note: trash table has bigint id, but target tables use UUID id
+    // Exclude trash-specific fields and id (target tables will auto-generate UUID id)
+    const { origin_type, item_uid, ...trashRest } = trashItem;
+    const promptData = stripTrashMetadata(trashRest);
 
-    if (insertError) {
-      throw new Error(`Failed to restore prompt: ${insertError.message}`);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
+    if (origin_type === "FAVORITE") {
+      // Restore to favorite_prompts
+      // Exclude id (favorite_prompts will auto-generate UUID id)
+      const { error: insertError } = await supabase
+        .from("favorite_prompts")
+        .insert([
+          {
+            ...promptData,
+            user_id: user.id,
+            item_uid: null,
+          },
+        ]);
+
+      if (insertError) {
+        throw new Error(`Failed to restore favorite: ${insertError.message}`);
+      }
+    } else {
+      // Restore to prompts (default for PROMPT or undefined)
+      // Only include id if item_uid exists, otherwise let database auto-generate UUID
+      const restoredPrompt = item_uid
+        ? { ...promptData, id: item_uid }
+        : promptData;
+      const { error: insertError } = await supabase
+        .from("prompts")
+        .insert([restoredPrompt]);
+
+      if (insertError) {
+        throw new Error(`Failed to restore prompt: ${insertError.message}`);
+      }
     }
 
     // 3. Delete from trash
@@ -39,10 +95,14 @@ export async function restorePrompt(id: string) {
 
     revalidatePath("/trash");
     revalidatePath("/");
+    revalidatePath("/favorites");
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error restoring prompt:", error);
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "알 수 없는 오류입니다.",
+    };
   }
 }
 
@@ -58,8 +118,11 @@ export async function deleteTrashPrompt(id: string) {
 
     revalidatePath("/trash");
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting trash prompt:", error);
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "알 수 없는 오류입니다.",
+    };
   }
 }
